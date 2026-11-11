@@ -106,6 +106,27 @@ test('commands：/全员禁言 成功走 gate + setGroupWholeBan', async () => {
   assert.match(calls[1][1], /已开启全员禁言/)
 })
 
+test('commands：/unmute 成功调用 setGroupBan(0)', async () => {
+  const calls = []
+  const bridge = {
+    config: { botQq: 9 },
+    server: {
+      currentSocket: () => ({ id: 'sock' }),
+      setGroupBan: async (_s, groupId, target, seconds) => calls.push(['ban', groupId, target, seconds]),
+    },
+    botAdminBlockedReason: () => '',
+    routeKey: () => 'g:1',
+    gate: { run: async (_a, _k, _d, fn) => { await fn(); return { ok: true } } },
+    safeReply: async (_m, text) => calls.push(['reply', text]),
+  }
+  await handleAdminCommand({
+    message: { messageType: 'group', groupId: 1, userId: 1 },
+    cmd: 'unmute', arg: '12345', bridge, debugLog: () => {},
+  })
+  assert.deepEqual(calls[0], ['ban', 1, 12345, 0])
+  assert.match(calls[1][1], /已解除 12345 的禁言/)
+})
+
 test('commands：/mute 成功调用 setGroupBan', async () => {
   const calls = []
   const bridge = {
