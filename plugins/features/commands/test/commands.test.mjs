@@ -106,6 +106,23 @@ test('commands：/全员禁言 成功走 gate + setGroupWholeBan', async () => {
   assert.match(calls[1][1], /已开启全员禁言/)
 })
 
+test('commands：/公告 gate 拒绝时报告失败', async () => {
+  const replies = []
+  const bridge = {
+    config: {},
+    server: { currentSocket: () => ({ id: 'sock' }), sendGroupNotice: async () => {} },
+    botAdminBlockedReason: () => '',
+    routeKey: () => 'g:1',
+    gate: { run: async () => ({ ok: false, reason: 'denied' }) },
+    safeReply: async (_m, text) => replies.push(text),
+  }
+  await handleAdminCommand({
+    message: { messageType: 'group', groupId: 1, userId: 1 },
+    cmd: '公告', arg: 'hello', bridge,
+  })
+  assert.match(replies[0], /发布失败：denied/)
+})
+
 test('commands：/公告 成功走 gate + sendGroupNotice', async () => {
   const calls = []
   const bridge = {
