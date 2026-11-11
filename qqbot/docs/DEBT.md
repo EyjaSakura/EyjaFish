@@ -8,7 +8,7 @@
 
 - 现状：997 非空行（2026-11-11），已 <1000
 - 已迁出：49 个公开薄包装到 `lib/services/bridge-facade.js`，通过 `Object.assign(QQBridge.prototype, ...)` 保持 API
-- 覆盖率：`npm run test:bridge` 真实统计 bridge.js，当前 58.74 / 84.62 / 12.21；CI 阈值 58 / 84 / 12
+- 覆盖率：`npm run test:bridge` 真实统计 bridge.js，当前 59.20 / 84.91 / 12.54；CI 阈值 59 / 84 / 12
 - 剩余：函数覆盖率仍低（大量薄包装方法只被调用链覆盖），后续按需提升
 - 注意：不能再按“文件内引用数”直接删公开方法，必须先跑调用图
 

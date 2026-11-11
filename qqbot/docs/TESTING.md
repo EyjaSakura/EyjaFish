@@ -12,7 +12,7 @@
 | private 字段 | `test/bridge-private-fields.test.mjs` | 所有 `this.#x` 必须有类内声明 |
 | 部署 smoke | `scripts/deploy-smoke.ps1` | 临时目录打包 → 改文件 → 回滚 → 断言恢复 |
 
-当前 `test:new` 共 **175 项**；bridge core **17 项**（`npm run test:bridge`）；feature 单测 **42 项**（`scripts/test-features.mjs --coverage`；覆盖率 25.97 / 44.84 / 15.59）。
+当前 `test:new` 共 **175 项**；bridge core **18 项**（`npm run test:bridge`）；feature 单测 **42 项**（`scripts/test-features.mjs --coverage`；覆盖率 25.97 / 44.84 / 15.59）。
 
 ## CI
 
@@ -41,7 +41,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File D:\DSH\qqbot\scripts\ci.ps1
 - `all-lib`：`lib/**`，排除 `lib/bridge.js`
 - `bridge.js`：`npm run test:bridge` 通过 `test/host-loader.mjs` 把宿主包换成桩，真实统计核心类
   - 当前基线：行 55.43 / 分支 73.33 / 函数 3.31
-  - CI 阈值：58 / 84 / 12（只升不降）
+  - CI 阈值：59 / 84 / 12（只升不降）
 
 bridge 当前门禁：
 

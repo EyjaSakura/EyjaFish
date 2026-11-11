@@ -249,6 +249,15 @@ test('bridge 核心：markSeen 写 qq-last-seen.json', () => {
   }
 })
 
+test('bridge 核心：未知 session 事件不抛异常', () => {
+  const { bridge } = fakeBridge()
+  bridge.sessions = new Map()
+  bridge.agents = new Map()
+  bridge.stopped = false
+  bridge.logger = { error: () => {}, warn: () => {} }
+  assert.doesNotThrow(() => bridge.onSessionEvent({ id: 's1' }, { type: 'unknown' }))
+})
+
 test('bridge 核心：writeGate 允许/拒绝文案', () => {
   const { bridge } = fakeBridge()
   bridge.canRun = () => ({ allowed: true })
