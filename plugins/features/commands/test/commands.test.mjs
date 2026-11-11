@@ -68,6 +68,22 @@ test('commands：群管命令在私聊直接拒绝', async () => {
   assert.match(replies[0], /仅支持群聊/)
 })
 
+test('commands：/退群 默认关闭时说明原因', async () => {
+  const replies = []
+  const bridge = {
+    config: { leaveGroupEnabled: false },
+    server: { currentSocket: () => ({ id: 'sock' }) },
+    botAdminBlockedReason: () => '',
+    routeKey: () => 'g:1',
+    safeReply: async (_m, text) => replies.push(text),
+  }
+  await handleAdminCommand({
+    message: { messageType: 'group', groupId: 1, userId: 1 },
+    cmd: '退群', arg: '', bridge,
+  })
+  assert.match(replies[0], /退群功能默认关闭/)
+})
+
 test('commands：/clear 会 rotate + 清记忆并回复', async () => {
   const calls = []
   const bridge = {
