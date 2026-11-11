@@ -113,6 +113,7 @@ export function initializeBridge({ bridge, ctx, config, server, logger, defineTo
       callbacks: {
         beginWindow: (key) => privates.beginInjectWindow(key),
         endWindow: (key) => privates.endInjectWindow(key),
+        routeKey: (message) => bridge.routeKey(message),
         onQqMessage: (message) => bridge.onQqMessage(message),
         onNotice: (notice) => bridge.onNotice(notice),
         onRequest: (request) => bridge.onRequest(request),

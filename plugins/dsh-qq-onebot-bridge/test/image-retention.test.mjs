@@ -1,6 +1,11 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
 import { cleanupImageDirs, pruneTrashDirs } from '../lib/services/image-retention.js'
+import { pruneTrash } from '../lib/services/trash-prune.js'
 
 test('cleanup：移入回收站计数', () => {
   const moved = []
@@ -70,4 +75,25 @@ test('prune：真删后 trace，异常归零', () => {
     pruneTrash: () => { throw new Error('x') },
   })
   assert.deepEqual(bad, { buckets: 0, files: 0, bytes: 0 })
+})
+
+test('prune：实际 fs 删除过期日期桶（回归）', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'qq-trash-prune-'))
+  try {
+    const bucket = join(dir, '2020-01-01')
+    mkdirSync(bucket, { recursive: true })
+    writeFileSync(join(bucket, 'old.bin'), 'x')
+    const result = pruneTrashDirs({
+      config: { imageTrashDir: dir, trashRetentionDays: 1, trashMaxBytes: 0 },
+      pathOf: () => dir,
+      pruneTrash,
+      trace: { event: () => {} },
+      debugLog: () => {},
+    })
+    assert.equal(result.buckets, 1)
+    assert.equal(result.files, 1)
+    assert.equal(existsSync(bucket), false)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
 })

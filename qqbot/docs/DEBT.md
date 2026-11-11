@@ -19,8 +19,9 @@
   - 真实发送（turn 39）：`injectDryRun=false`，回复 `ok` 真的发到 owner QQ，trace `stage=reply target=private:1815442184 chars=2`
 - 已修：注入回合的模型回复不再无条件拦截；只有 `injectDryRun !== false` 才拦
 - 缺口：多步工具调用循环、nightly 自动化、非 owner 测试群
-- 入口：`scripts/e2e-real-agent.ps1`（dry-run）、`scripts/e2e-real-send.ps1`（需显式 `-ConfirmRealSend`）
-- 验收：nightly 可重复；真实发送只在测试号/测试群执行
+- 入口：`scripts/e2e-real-agent.ps1`（dry-run，支持 `-RuntimeFile`）、`scripts/e2e-nightly.ps1`（隔离实例预检/运行）、`scripts/e2e-real-send.ps1`（需显式 `-ConfirmRealSend`）
+- nightly 隔离实例：profile `e2e` / 端口 13081/6701 / 数据 `D:\DSH\qqbot-e2e\data` 已建立；首轮验证出现模型空回复和注入队列积压，**未注册计划任务**；先修稳再排程
+- 验收：连续 3 次隔离实例 dry-run 通过；真实发送只在测试号/测试群执行
 
 ### 2a. core+services 类型检查已清零
 
@@ -55,6 +56,15 @@
 - 验收：每个 feature 至少一个可独立跑的单测；CI 覆盖全部 feature
 - 优先级：P1，高于继续刷 bridge 覆盖率
 
+### 2e. 2026-11-11 运行时体检发现并修复
+
+- 已修：`bridge-initialize` 没把 `routeKey` 传给 `createTurnRuntime`，每条真人消息日志都报 `[session-rotate] failed: routeKey is not a function`；补 `routeKey: (message) => bridge.routeKey(message)` 后重启，日志不再出现
+- 已修：`pruneTrashDirs` 调 `pruneTrash` 时没注入 `exists/readdir/stat/rm`，启动时日志报 `trash retention failed: exists is not a function`；`image-retention.js` 现在直接注入 `node:fs`
+- 已补回归：`test/image-retention.test.mjs` 用真实临时目录验证过期日期桶会被真删；`test:new` 从 175 增至 181
+- 未修（体检遗留）：
+  - `jailed fs plugin load failed: dsh-tool-fs-jailed not found`：宿主 profile 没装该插件；需要决定是装插件还是关闭 `jailedFs` 工具面
+  - `mount preset qq-coding failed: Unknown agent preset`：profile 引用了已不存在的 preset，当前回退 `standard`；需要改配置或补 preset
+
 ## P2
 
 ### 3. 插件机制与 Cordis 并存
@@ -74,6 +84,7 @@
 - 现状：已加 `scripts/prune-backups.ps1`；plugin zip 11 → 8，旧 3 个移到 `backups\archive\plugin`
 - 风险：长期运行继续膨胀；故障时难定位；备份目录混有历史源码
 - 已接入 `health-watchdog`：每 24 小时最多执行一次，状态写 `data\maintenance-last.txt`；失败会推手机告警并同样写状态避免刷屏；已用临时失败脚本验证：`MAINTENANCE FAILED: rotate-logs exit=1`
+- 告警闭环：2026-11-11 15:09 手机已收到维护失败通知，Server酱/ntfy 链路确认可达
 - 优先级：P2；不清理数据，只加策略
 
 ### 4c. 源码 git / lockfile 已建立

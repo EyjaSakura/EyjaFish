@@ -1,4 +1,6 @@
 // 图片/语音等文件保留期清理 + 回收站二次清理。
+import { existsSync, readdirSync, statSync, rmSync } from 'node:fs'
+
 /** @param {any} args */
 export function cleanupImageDirs({ config = {}, dirs, pathOf, expiredFiles, moveToTrash, debugLog = () => {} }) {
   try {
@@ -30,6 +32,10 @@ export function pruneTrashDirs({ config = {}, pathOf, pruneTrash, trace, debugLo
       dir: config.imageTrashDir || pathOf(config, 'trash'),
       keepDays,
       maxBytes,
+      exists: existsSync,
+      readdir: readdirSync,
+      stat: statSync,
+      rm: rmSync,
     })
     if (result.files > 0) {
       debugLog(`trash retention: 真删 ${result.buckets} 个过期日期桶 / ${result.files} 个文件 / ${Math.round(result.bytes / 1024)} KiB（保留 ${keepDays} 天，上限 ${maxBytes > 0 ? `${Math.round(maxBytes / 1024 / 1024)} MiB` : '不限'}）`)
