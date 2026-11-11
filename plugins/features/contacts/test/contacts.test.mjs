@@ -6,6 +6,7 @@ import { join } from 'node:path'
 
 import { hooks } from '../index.js'
 import { registerOwnerTools } from '../owner.js'
+import { registerQueryTools } from '../query.js'
 
 test('contacts：hooks 暴露 identity/owner/query 注册器', () => {
   assert.deepEqual(Object.keys(hooks).sort(), ['registerIdentityTools', 'registerOwnerTools', 'registerQueryTools'])
@@ -70,4 +71,21 @@ test('contacts：主人按 chat 取素材并截断输出', async () => {
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
+})
+
+test('contacts：无 OneBot 连接时历史查询明确报错', async () => {
+  const tools = []
+  registerQueryTools({
+    defineTool: (tool) => tool,
+    agentCtx: { tools: { register: (tool) => tools.push(tool) } },
+    route: { messageType: 'private', targetId: 1 }, key: 'u:1', role: 'owner',
+    bridge: {
+      config: { historyQueryEnabled: true, botQq: 9 },
+      server: { currentSocket: () => null },
+    },
+    debugLog: () => {},
+  })
+  const tool = tools.find((item) => item.name === 'qq_recent_history')
+  assert.ok(tool)
+  await assert.rejects(() => tool.execute({ count: 3 }), /当前无可用 OneBot 连接/)
 })
