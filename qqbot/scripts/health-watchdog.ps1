@@ -39,14 +39,24 @@ function Invoke-Maintenance {
     $prune = Join-Path $Root 'scripts\prune-backups.ps1'
     if (Test-Path $rotate) {
       & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $rotate -Apply 2>&1 | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw "rotate-logs exit=$LASTEXITCODE" }
     }
     if (Test-Path $prune) {
       & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $prune -Apply 2>&1 | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw "prune-backups exit=$LASTEXITCODE" }
     }
     Set-Content -Path $MaintState -Value (Get-Date).ToString('o') -Encoding UTF8
     Log 'MAINTENANCE rotate-logs/prune-backups done'
   } catch {
-    Log ("MAINTENANCE FAILED: {0}" -f $_.Exception.Message)
+    $message = $_.Exception.Message
+    Log ("MAINTENANCE FAILED: {0}" -f $message)
+    # 失败也写状态，24 小时内不重复轰炸；同时推一条手机告警。
+    Set-Content -Path $MaintState -Value (Get-Date).ToString('o') -Encoding UTF8
+    $notify = Join-Path $Root 'scripts\notify-push.ps1'
+    if (Test-Path $notify) {
+      & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $notify `
+        -Title '大肥鱼维护失败' -Body ("日志/备份维护失败：{0}" -f $message) 2>&1 | Out-Null
+    }
   }
 }
 
