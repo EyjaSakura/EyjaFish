@@ -68,6 +68,23 @@ test('commands：群管命令在私聊直接拒绝', async () => {
   assert.match(replies[0], /仅支持群聊/)
 })
 
+test('commands：/全员禁言 被 gate 拒绝时报告失败', async () => {
+  const replies = []
+  const bridge = {
+    config: {},
+    server: { currentSocket: () => ({ id: 'sock' }), setGroupWholeBan: async () => {} },
+    botAdminBlockedReason: () => '',
+    routeKey: () => 'g:1',
+    gate: { run: async () => ({ ok: false, reason: 'no permission' }) },
+    safeReply: async (_m, text) => replies.push(text),
+  }
+  await handleAdminCommand({
+    message: { messageType: 'group', groupId: 1, userId: 1 },
+    cmd: '全员禁言', arg: '', bridge,
+  })
+  assert.match(replies[0], /操作失败：no permission/)
+})
+
 test('commands：/全员禁言 成功走 gate + setGroupWholeBan', async () => {
   const calls = []
   const bridge = {
