@@ -46,6 +46,28 @@ test('events：私聊文件没有下载链接时给出明确提示', async () =>
   assert.match(replies[0], /没有可下载链接/)
 })
 
+test('events：私聊文件下载失败时报告错误', async () => {
+  const replies = []
+  const oldFetch = globalThis.fetch
+  globalThis.fetch = async () => { throw new Error('network down') }
+  try {
+    const bridge = {
+      config: { fileTransferMaxBytes: 1024 },
+      filesDir: 'D:/tmp/qq-files',
+      server: { currentSocket: () => null },
+      safeReply: async (_m, text) => replies.push(text),
+    }
+    await handlePrivateFiles({
+      message: { userId: 1, files: [{ name: 'a.txt', url: 'https://example.com/a.txt' }] },
+      bridge,
+      debugLog: () => {},
+    })
+    assert.match(replies[0], /保存失败：network down/)
+  } finally {
+    globalThis.fetch = oldFetch
+  }
+})
+
 test('events：没有视频段时直接返回', async () => {
   const message = { raw: { message: [] }, text: 'x' }
   await handleIncomingVideo({ message, bridge: {}, debugLog: () => {} })
