@@ -47,9 +47,9 @@
 - ark 声明了 `maa\data` 与 `maa\queue`
 - 后续：新增 feature 必须声明；audit 可继续加提示项
 
-### 2d. feature 包没有本地单测
+### 2d. feature 包本地单测已覆盖 14/14
 
-- 现状：14 个 feature 包中，media / draw / pvz / ark / sing / usage 已有本地单测（10 项）；其余 8 个仍为 0
+- 现状：14 个 feature 包中，14 个 feature 均已有本地单测（18 项）
 - 已加：`scripts/test-features.mjs` + CI `feature tests` 步骤
 - 风险：其余 feature 的业务分支主要靠手测/线上暴露
 - 验收：每个 feature 至少一个可独立跑的单测；CI 覆盖全部 feature
