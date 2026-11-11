@@ -37,6 +37,27 @@ test('commands：/help 对 owner 追加管理/工作区段', async () => {
   assert.match(seen[0], /管理：\/mute/)
 })
 
+test('commands：/help 对 guest 不显示管理/工作区段', async () => {
+  const seen = []
+  const bridge = {
+    config: {
+      adminEnabled: true, imageGenEnabled: false, sttEnabled: false,
+      voiceReadingEnabled: false, checkinEnabled: false, fortuneEnabled: false,
+      diceEnabled: false, pointsEnabled: false, gameEnabled: false,
+      statsEnabled: false, groupReadEnabled: false, memberQueryEnabled: false,
+      groupFileEnabled: false, albumEnabled: false, ocrEnabled: false,
+      historySearchEnabled: false, mcStatusEnabled: false,
+    },
+    isAdmin: () => false,
+    canSwitchWorkspace: () => false,
+    engageOn: () => false,
+    safeReply: async (_m, text) => seen.push(text),
+  }
+  await handleHelp({ message: { messageType: 'group', userId: 2 }, bridge })
+  assert.doesNotMatch(seen[0], /管理：\/mute/)
+  assert.doesNotMatch(seen[0], /工作区/)
+})
+
 test('commands：群管命令在私聊直接拒绝', async () => {
   const replies = []
   const bridge = { safeReply: async (_m, text) => replies.push(text) }
