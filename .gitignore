@@ -10,6 +10,7 @@
 !/qqbot/
 /qqbot/*
 !/qqbot/scripts/
+!/qqbot/start-stack.ps1
 !/qqbot/docs/
 !/qqbot/README.md
 !/qqbot/PORTS.md
