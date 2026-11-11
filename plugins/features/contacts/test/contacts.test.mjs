@@ -113,6 +113,29 @@ test('contacts：历史搜索缺关键词时要求输入', async () => {
   assert.deepEqual(result, { count: 0, detail: '请给出要搜索的关键词。' })
 })
 
+test('contacts：历史搜索天数按保留上限夹紧', async () => {
+  const tools = []
+  let seenDays = 0
+  registerQueryTools({
+    defineTool: (tool) => tool,
+    agentCtx: { tools: { register: (tool) => tools.push(tool) } },
+    route: { messageType: 'private', targetId: 1 }, key: 'u:1', role: 'owner',
+    bridge: {
+      config: {
+        historyQueryEnabled: false, historySearchEnabled: true,
+        historySearchDays: 7, historyArchiveKeepDays: 90, historySearchLimit: 20,
+      },
+      chatKeyOf: () => 'u:1',
+      injectionSuppressed: () => false,
+      archive: { search: (_kw, opts) => { seenDays = opts.days; return { hits: [], scanned: 0 } } },
+    },
+    debugLog: () => {},
+  })
+  const tool = tools.find((item) => item.name === 'qq_search_history')
+  await tool.execute({ keywords: 'x', days: 999 })
+  assert.equal(seenDays, 90)
+})
+
 test('contacts：注入回合跳过历史搜索', async () => {
   const tools = []
   registerQueryTools({
@@ -226,6 +249,10 @@ test('contacts：群成员查询成功返回结果', async () => {
   assert.ok(tool)
   const result = await tool.execute({ query: '' })
   assert.deepEqual(result, { found: true, detail: 'group=2002 kind=list' })
+  const byId = await tool.execute({ query: '12345' })
+  assert.deepEqual(byId, { found: true, detail: 'group=2002 kind=info' })
+  const byName = await tool.execute({ query: '小明' })
+  assert.deepEqual(byName, { found: true, detail: 'group=2002 kind=info' })
 })
 
 test('contacts：群成员查询失败时返回原因', async () => {

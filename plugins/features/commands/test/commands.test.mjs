@@ -241,6 +241,27 @@ test('commands：/公告 无 OneBot 连接时明确拒绝', async () => {
   assert.match(replies[0], /当前无可用连接/)
 })
 
+test('commands：/取消精华 对引用消息成功调用 deleteEssenceMsg', async () => {
+  const calls = []
+  const bridge = {
+    config: {},
+    server: {
+      currentSocket: () => ({ id: 'sock' }),
+      deleteEssenceMsg: async (_s, messageId) => calls.push(['delete', messageId]),
+    },
+    botAdminBlockedReason: () => '',
+    routeKey: () => 'g:1',
+    gate: { run: async (_a, _k, _d, fn) => { await fn(); return { ok: true } } },
+    safeReply: async (_m, text) => calls.push(['reply', text]),
+  }
+  await handleAdminCommand({
+    message: { messageType: 'group', groupId: 1, userId: 1, reply: { messageId: 'm1' } },
+    cmd: '取消精华', arg: '', bridge,
+  })
+  assert.deepEqual(calls[0], ['delete', 'm1'])
+  assert.match(calls[1][1], /已取消精华/)
+})
+
 test('commands：/精华 对引用消息成功调用 setEssenceMsg', async () => {
   const calls = []
   const bridge = {
