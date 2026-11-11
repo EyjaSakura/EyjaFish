@@ -249,6 +249,28 @@ test('bridge 核心：markSeen 写 qq-last-seen.json', () => {
   }
 })
 
+test('bridge 核心：/kick 确认取消与执行', async () => {
+  const { bridge } = fakeBridge()
+  const replies = []
+  bridge.routeKey = () => 'g:1'
+  bridge.pendingKicks = new Map()
+  bridge.safeReply = async (_m, text) => replies.push(text)
+  bridge.pendingKicks.set('g:1', {
+    userId: 2, adminId: 1, route: { targetId: 1 }, expiresAt: Date.now() + 60_000,
+  })
+  await bridge.handleKickConfirm({ messageType: 'group', groupId: 1, userId: 1 }, '取消')
+  assert.match(replies[0], /已取消踢人操作/)
+
+  const kicked = []
+  bridge.pendingKicks.set('g:1', {
+    userId: 2, adminId: 1, route: { targetId: 1 }, expiresAt: Date.now() + 60_000,
+  })
+  bridge.server = { currentSocket: () => ({ id: 'sock' }), setGroupKick: async (...args) => kicked.push(args) }
+  await bridge.handleKickConfirm({ messageType: 'group', groupId: 1, userId: 1 }, '确认踢')
+  assert.deepEqual(kicked[0], [{ id: 'sock' }, 1, 2])
+  assert.match(replies[1], /已执行移出操作/)
+})
+
 test('bridge 核心：未知 session 事件不抛异常', () => {
   const { bridge } = fakeBridge()
   bridge.sessions = new Map()

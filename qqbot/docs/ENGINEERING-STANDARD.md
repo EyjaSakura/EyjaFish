@@ -510,7 +510,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File D:\DSH\qqbot\scripts\health.
 ```text
 core+services：行 97 / 分支 82 / 函数 79
 all-lib（排除 bridge）：行 80 / 分支 73 / 函数 70（当前 84.73 / 75.30 / 72.34）
-bridge.js：行 55.43 / 分支 73.33 / 函数 3.31（基线 59 / 84 / 12，只升不降）
+bridge.js：行 55.43 / 分支 73.33 / 函数 3.31（基线 59 / 85 / 12，只升不降）
 ```
 
 要求：
