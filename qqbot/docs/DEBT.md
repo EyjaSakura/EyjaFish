@@ -49,10 +49,10 @@
 
 ### 2d. feature 包没有本地单测
 
-- 现状：14 个 feature 包内 `*.test.*` 数量全部为 0；约 4,700 非空行 feature 代码
-- 已有：bridge 合同测试、feature typecheck、部分内核集成测试
-- 风险：feature 内业务分支（命令参数、权限、边界）主要靠手测/线上暴露
-- 验收：每个 feature 至少一个可独立跑的单测；CI 增加 feature test 步骤
+- 现状：14 个 feature 包中，media / draw / pvz / ark 已有本地单测（8 项）；其余 10 个仍为 0
+- 已加：`scripts/test-features.mjs` + CI `feature tests` 步骤
+- 风险：其余 feature 的业务分支主要靠手测/线上暴露
+- 验收：每个 feature 至少一个可独立跑的单测；CI 覆盖全部 feature
 - 优先级：P1，高于继续刷 bridge 覆盖率
 
 ## P2
@@ -76,12 +76,12 @@
 - 验收：日志按大小/日期轮转；备份只保留最近 N 份 + 每月归档
 - 优先级：P2；不清理数据，只加策略
 
-### 4c. 源码没有 git / lockfile
+### 4c. 源码 git / lockfile 已建立
 
-- 现状：`D:\DSH\plugins\dsh-qq-onebot-bridge` 没有 `.git`，没有 `package-lock.json` / `pnpm-lock.yaml`
-- 风险：回滚依赖 zip；依赖版本不可复现；`npm audit` 没有 lock 可审计
-- 验收：初始化 git（只跟踪源码，不含 data/backups/logs）+ 生成 lockfile
-- 优先级：P2；先做源码仓库，不把运行数据提交
+- 现状：`D:\DSH` 已初始化 source-only git 仓库，远端 `https://github.com/EyjaSakura/EyjaFish.git`
+- 已跟踪：bridge、features、qqbot scripts/docs、配置模板；不跟踪 data/logs/backups/密钥
+- lockfile：`plugins/dsh-qq-onebot-bridge/package-lock.json` 已生成（`--legacy-peer-deps`，peer 冲突已记录）
+- 边界：历史提交从 2026-11-11 开始；之前的回滚仍靠 zip
 
 ### 5. functions 覆盖仍低于 lines
 

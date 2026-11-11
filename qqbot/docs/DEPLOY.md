@@ -41,6 +41,18 @@ D:\DSH\qqbot\backups\plugin\plugin-YYYYMMDD-HHmmss.zip
 
 内容为 bridge 插件目录全部文件，不含运行时 data。
 
+维护（默认 dry-run，不会删数据）：
+
+```powershell
+# 日志 > 20MB 轮转，保留 3 份
+powershell -File D:\DSH\qqbot\scripts\rotate-logs.ps1
+powershell -File D:\DSH\qqbot\scripts\rotate-logs.ps1 -Apply
+
+# plugin 快照保留最新 8 份，旧的移到 backups\archive\plugin
+powershell -File D:\DSH\qqbot\scripts\prune-backups.ps1
+powershell -File D:\DSH\qqbot\scripts\prune-backups.ps1 -Apply
+```
+
 ## 3. 手动启动 / 重启
 
 ```powershell
