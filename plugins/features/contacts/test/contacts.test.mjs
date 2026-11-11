@@ -245,6 +245,30 @@ test('contacts：群成员查询失败时返回原因', async () => {
   assert.deepEqual(result, { found: false, detail: '没有查到：权限不足' })
 })
 
+test('contacts：历史查询有消息时返回格式化文本', async () => {
+  const tools = []
+  registerQueryTools({
+    defineTool: (tool) => tool,
+    agentCtx: { tools: { register: (tool) => tools.push(tool) } },
+    route: { messageType: 'private', targetId: 1 }, key: 'u:1', role: 'owner',
+    bridge: {
+      config: { historyQueryEnabled: true, botQq: 9 },
+      server: {
+        currentSocket: () => ({ id: 'sock' }),
+        getFriendMsgHistory: async () => [{
+          message_id: 1, user_id: 2, sender: { card: 'A' }, time: 1700000000,
+          message: [{ type: 'text', data: { text: 'hello history' } }],
+        }],
+      },
+    },
+    debugLog: () => {},
+  })
+  const tool = tools.find((item) => item.name === 'qq_recent_history')
+  const result = await tool.execute({ count: 3 })
+  assert.ok(result.count >= 1)
+  assert.match(result.detail, /hello history/)
+})
+
 test('contacts：dry-run 历史查询返回明确说明', async () => {
   const tools = []
   registerQueryTools({
