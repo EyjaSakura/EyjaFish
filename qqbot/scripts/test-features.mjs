@@ -29,8 +29,8 @@ if (coverage) {
   args.push(
     '--experimental-test-coverage',
     '--test-coverage-include=features/**',
-    '--test-coverage-lines=27',
-    '--test-coverage-branches=54',
+    '--test-coverage-lines=28',
+    '--test-coverage-branches=62',
     '--test-coverage-functions=20',
   )
 }

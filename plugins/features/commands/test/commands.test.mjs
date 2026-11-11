@@ -37,6 +37,32 @@ test('commands：/help 对 owner 追加管理/工作区段', async () => {
   assert.match(seen[0], /管理：\/mute/)
 })
 
+test('commands：/help 在所有功能开启时展开完整菜单', async () => {
+  const seen = []
+  const bridge = {
+    config: {
+      adminEnabled: true, imageGenEnabled: true, sttEnabled: true,
+      voiceReadingEnabled: true, checkinEnabled: true, fortuneEnabled: true,
+      diceEnabled: true, pointsEnabled: true, gameEnabled: true,
+      statsEnabled: true, groupReadEnabled: true, memberQueryEnabled: true,
+      groupFileEnabled: true, albumEnabled: true, ocrEnabled: true,
+      historySearchEnabled: true, mcStatusEnabled: true, dailyReportEnabled: true,
+      keywordEnabled: true, antiRecallEnabled: true, filterEnabled: true,
+      verifyEnabled: true, opsReportEnabled: true, requestSyncEnabled: true,
+    },
+    isAdmin: () => true,
+    canSwitchWorkspace: () => true,
+    engageOn: () => false,
+    safeReply: async (_m, text) => seen.push(text),
+  }
+  await handleHelp({ message: { messageType: 'group', userId: 1 }, bridge })
+  assert.match(seen[0], /生图/)
+  assert.match(seen[0], /语音转文字/)
+  assert.match(seen[0], /日报/)
+  assert.match(seen[0], /防撤回/)
+  assert.match(seen[0], /入群审批/)
+})
+
 test('commands：/help 对 guest 不显示管理/工作区段', async () => {
   const seen = []
   const bridge = {
