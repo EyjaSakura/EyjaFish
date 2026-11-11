@@ -104,6 +104,37 @@ powershell -File D:\DSH\qqbot\scripts\e2e-real-agent.ps1 -Text "e2e ping"
 
 如果 `injection.enabled=false`，脚本会退出并提示先打开配置；当前默认关闭，属于明确边界，不是失败。
 
+### nightly 隔离实例
+
+nightly **不允许修改 live profile，也不允许重启 13080**。推荐形态：
+
+```text
+测试实例：profile=e2e，端口 13081 / 6701
+数据：D:\DSH\qqbot-e2e\data
+injectDryRun=true
+```
+
+运行：
+
+```powershell
+# 先检查测试实例是否在跑
+powershell -File D:\DSH\qqbot\scripts\e2e-nightly.ps1 -SkipModel
+
+# 测试实例就绪后跑真实模型 dry-run
+powershell -File D:\DSH\qqbot\scripts\e2e-nightly.ps1
+```
+
+规范：
+
+```text
+nightly 永远 dry-run
+真实发送只手动，且只对测试号/测试群
+失败才通知手机，成功写摘要
+测试实例与生产实例的 profile/端口/data 必须分开
+```
+
+当前测试 profile 已搭好，但首轮隔离实例验证出现模型空回复/注入队列积压，**尚未注册 nightly 任务**；不把不稳定的 nightly 排程上线。
+
 真实发送必须显式确认：
 
 ```powershell

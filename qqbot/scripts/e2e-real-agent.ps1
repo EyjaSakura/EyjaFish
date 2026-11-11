@@ -1,4 +1,4 @@
-﻿# 真实 agent e2e（手动/nightly，不进 CI）。
+# 真实 agent e2e（手动/nightly，不进 CI）。
 # 通过 bridge 的注入通道跑一轮真实 agent；默认要求 injectDryRun=true，不向 QQ 真发。
 # 用法：
 #   powershell -File scripts\e2e-real-agent.ps1 -Text "e2e ping"
@@ -7,17 +7,18 @@ param(
   [string]$Text = 'e2e ping（忽略这条，只回一句 ok）',
   [long]$UserId = 1815442184,
   [int]$TimeoutSeconds = 180,
+  [string]$RuntimeFile = 'C:\Users\Eyjafjalla\qq-runtime.json',
   [switch]$AllowRealSend
 )
 
 $ErrorActionPreference = 'Stop'
-$runtimeFile = 'C:\Users\Eyjafjalla\qq-runtime.json'
+$runtimeFile = $RuntimeFile
 if (-not (Test-Path $runtimeFile)) { throw "runtime snapshot missing: $runtimeFile" }
 $rt = Get-Content $runtimeFile -Raw -Encoding UTF8 | ConvertFrom-Json
 $injection = $rt.injection
 if (-not $injection -or $injection.enabled -ne $true) {
   Write-Host 'INJECTION DISABLED'
-  Write-Host '请先在 profile 的 cordis.patch.yml 打开 injectEnabled=true（建议同时 injectDryRun=true），重启 13080 后再跑。'
+  Write-Host '请先在对应 profile 的 cordis.patch.yml 打开 injectEnabled=true（建议同时 injectDryRun=true），重启该实例后再跑。'
   exit 2
 }
 if ($injection.dryRun -eq $false -and -not $AllowRealSend) {
