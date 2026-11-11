@@ -164,6 +164,40 @@ export function registerIdentityTools({ agentCtx, route, key, role, bridge, defi
     },
   }))
 
+  agentCtx.tools.register(defineTool({
+    name: 'qq_send_audio_to',
+    description: '主人专属：把一个本地音频文件作为语音消息发给白名单好友（跨窗口发已有音频，例如 qq_sing 生成的歌声）。只允许 owner 调用，且路径必须在可发送目录内。',
+    parameters: {
+      user_id: { type: 'string', required: true, description: '对方 QQ 号（必须在白名单内）' },
+      audio: { type: 'string', required: true, description: '本地音频路径（mp3/wav/m4a/ogg/flac/amr/silk）' },
+    },
+    output: out,
+    async execute(args) {
+      const uid = String(route?.targetId ?? '')
+      const owner = bridge.ownerQQ()
+      if (!owner || uid !== owner) return { ok: false, detail: '这个只跟主人说' }
+      const to = String(args.user_id ?? '').replace(/\D/g, '')
+      const rawAudio = String(args.audio ?? '').trim()
+      if (!to || !rawAudio) throw new Error('需要 user_id 和 audio')
+      const allow = [...(bridge.config.allowUsers ?? []), ...(bridge.config.adminUsers ?? [])].map(String)
+      if (!allow.includes(to)) return { ok: false, detail: to + ' 不在白名单里，不能主动发' }
+      const file = bridge.resolveSendPath(rawAudio, role)
+      const ext = extname(file).toLowerCase()
+      if (!['.mp3', '.wav', '.m4a', '.ogg', '.flac', '.amr', '.silk'].includes(ext)) {
+        throw new Error('只支持音频文件：mp3 / wav / m4a / ogg / flac / amr / silk')
+      }
+      const bytes = readFileSync(file)
+      if (bytes.length === 0) throw new Error('音频文件为空')
+      const socket2 = bridge.server.currentSocket()
+      if (!socket2) throw new Error('当前无可用 OneBot 连接')
+      const data = await bridge.server.sendSegments(socket2, 'private', Number(to), [
+        { type: 'record', data: { file: 'base64://' + bytes.toString('base64') } },
+      ])
+      try { bridge.trackSent('u:' + to, data) } catch { /* 记录失败不影响发送 */ }
+      return { ok: true, detail: `音频已发给 ${to}（${Math.round(bytes.length / 1024)} KB）` }
+    },
+  }))
+
   agentCtx.tools.register(defineTool({ // [self-state]
     name: 'qq_set_activity',
     description: '更新“你当前在干什么”，三个窗口共享；开始一件事或做完一件事时调用。只写 activity/detail/withWhom，不写对话内容。',

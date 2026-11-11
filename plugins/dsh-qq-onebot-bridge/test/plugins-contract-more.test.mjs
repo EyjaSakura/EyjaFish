@@ -36,12 +36,12 @@ function harness() {
   return { names, ctx }
 }
 
-test('contacts 注册 6 个身份工具', () => {
+test('contacts 注册 7 个身份工具', () => {
   const { names, ctx } = harness()
   contacts.registerIdentityTools(ctx)
   assert.deepEqual([...names].sort(), [
     'qq_contact_taste', 'qq_quote_reply', 'qq_report_identity',
-    'qq_send_to_user', 'qq_set_activity', 'qq_set_friend_remark',
+    'qq_send_audio_to', 'qq_send_to_user', 'qq_set_activity', 'qq_set_friend_remark',
   ])
 })
 

@@ -53,9 +53,10 @@ export function registerSingTools({ defineTool, agentCtx, route, key, bridge }) 
       seconds: { type: 'number', description: '唱多少秒，默认 60，最多 60' },
       accomp: { type: 'boolean', description: '是否带伴奏，默认 false（清唱）' },
       section: { type: 'string', description: '段落名，例如 副歌1 / 主歌2；省略则从第一句歌词' },
+      save: { type: 'boolean', description: '保存到 D:\\DSH\\qqbot\\media\\sing 并返回 file，便于 qq_send_audio_to 转发' },
     },
     output: {
-      schema: { type: 'object', additionalProperties: false, properties: { sent: { type: 'boolean', required: true }, detail: { type: 'string', required: true } } },
+      schema: { type: 'object', additionalProperties: false, properties: { sent: { type: 'boolean', required: true }, detail: { type: 'string', required: true }, file: { type: 'string' } } },
       render: (_args, value) => [{ type: 'text', text: value.detail }],
     },
     async execute(args) {
@@ -150,6 +151,18 @@ export function registerSingTools({ defineTool, agentCtx, route, key, bridge }) 
       } catch (e) {
         return { sent: false, detail: '切片失败：' + (e.message || e) }
       }
+      let savedFile = ''
+      if (args.save === true) {
+        try {
+          const saveDir = 'D:\\DSH\\qqbot\\media\\sing'
+          mkdirSync(saveDir, { recursive: true })
+          const safeTitle = String(song.title).replace(/[\\/:*?"<>|]/g, '_').slice(0, 40)
+          savedFile = join(saveDir, `${Date.now()}-${safeTitle}.wav`)
+          copyFileSync(tmp, savedFile)
+        } catch {
+          savedFile = ''
+        }
+      }
       try {
         const voiceSrc = 'base64://' + readFileSync(tmp).toString('base64')
         await bridge.sendVoice(route, [{ type: 'record', data: { file: voiceSrc } }])
@@ -159,7 +172,11 @@ export function registerSingTools({ defineTool, agentCtx, route, key, bridge }) 
       const mmss = (x) => Math.floor(x / 60) + ':' + String(Math.round(x % 60)).padStart(2, '0')
       const mode = accomp ? '带伴奏' : '清唱'
       const tail = (wantAccomp && !accomp) ? '（这首没有伴奏文件，只能清唱）' : ''
-      return { sent: true, detail: (caution && !warned ? notice : '') + '唱了《' + song.title + '》' + mmss(start) + '–' + mmss(start + dur) + '，' + dur + ' 秒，' + mode + tail }
+      return {
+        sent: true,
+        detail: (caution && !warned ? notice : '') + '唱了《' + song.title + '》' + mmss(start) + '–' + mmss(start + dur) + '，' + dur + ' 秒，' + mode + tail + (savedFile ? '（已保存）' : ''),
+        ...(savedFile ? { file: savedFile } : {}),
+      }
     },
   }))
 

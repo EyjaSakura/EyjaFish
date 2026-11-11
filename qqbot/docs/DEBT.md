@@ -50,7 +50,7 @@
 
 ### 2d. feature 包本地单测已覆盖 14/14
 
-- 现状：14 个 feature 包中，14 个 feature 均已有本地单测（63 项，覆盖率 35.34 / 64.05 / 19.91）；commands 已补 /help 行为测试
+- 现状：14 个 feature 包中，14 个 feature 均已有本地单测（65 项，覆盖率 37.76 / 63.22 / 19.49）；commands 已补 /help 行为测试
 - 已加：`scripts/test-features.mjs` + CI `feature tests` 步骤
 - 风险：其余 feature 的业务分支主要靠手测/线上暴露
 - 验收：每个 feature 至少一个可独立跑的单测；CI 覆盖全部 feature
@@ -73,6 +73,7 @@
 - 已处理：`perms.json` 备份为 `backups\perms.json.legacy-*`，并在主目录改名为 `perms.json.legacy`
 - 唯一权威：profile 的 `identity` + ACL policy
 - guest 工具面：`read/glob/grep`（jailed fs）+ web + QQ 成员/历史；无 write/shell/media/image
+- 跨窗口音频：qq_send_audio_to（owner-only，白名单，音频扩展名/发送目录校验）；qq_sing 加 save:true 保存到 D:\DSH\qqbot\media\sing 供其转发
 - owner 工具面：`standard` 全量（用户明确接受风险）
 - 注意：后续改权限只改 profile/ACL，不再看 `perms.json`
 

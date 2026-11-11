@@ -5,12 +5,64 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { hooks } from '../index.js'
+import { registerIdentityTools } from '../identity.js'
 import { registerOwnerTools } from '../owner.js'
 import { registerQueryTools } from '../query.js'
 
 test('contacts：hooks 暴露 identity/owner/query 注册器', () => {
   assert.deepEqual(Object.keys(hooks).sort(), ['registerIdentityTools', 'registerOwnerTools', 'registerQueryTools'])
   assert.ok(Object.values(hooks).every((fn) => typeof fn === 'function'))
+})
+
+test('contacts：qq_send_audio_to 跨窗口发送音频', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'qq-audio-'))
+  try {
+    const file = join(dir, 'song.wav')
+    writeFileSync(file, Buffer.from('fake-audio'))
+    const tools = []
+    const sent = []
+    registerIdentityTools({
+      defineTool: (tool) => tool,
+      agentCtx: { tools: { register: (tool) => tools.push(tool) } },
+      route: { targetId: '1' }, key: 'u:1', role: 'owner',
+      bridge: {
+        ownerQQ: () => '1',
+        config: { allowUsers: ['1', '2'], adminUsers: ['1'] },
+        resolveSendPath: () => file,
+        server: {
+          currentSocket: () => ({ id: 'sock' }),
+          sendSegments: async (_s, type, to, segments) => { sent.push({ type, to, segments }) },
+        },
+        trackSent: () => {},
+      },
+      debugLog: () => {},
+    })
+    const tool = tools.find((item) => item.name === 'qq_send_audio_to')
+    assert.ok(tool)
+    const result = await tool.execute({ user_id: '2', audio: file })
+    assert.equal(result.ok, true)
+    assert.equal(sent[0].type, 'private')
+    assert.equal(sent[0].to, 2)
+    assert.equal(sent[0].segments[0].type, 'record')
+    assert.match(sent[0].segments[0].data.file, /^base64:\/\//)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('contacts：qq_send_audio_to 非主人拒绝', async () => {
+  const tools = []
+  registerIdentityTools({
+    defineTool: (tool) => tool,
+    agentCtx: { tools: { register: (tool) => tools.push(tool) } },
+    route: { targetId: '2' }, key: 'u:2', role: 'guest',
+    bridge: { ownerQQ: () => '1', config: { allowUsers: ['1', '2'] } },
+    debugLog: () => {},
+  })
+  const tool = tools.find((item) => item.name === 'qq_send_audio_to')
+  const result = await tool.execute({ user_id: '2', audio: 'x.wav' })
+  assert.equal(result.ok, false)
+  assert.match(result.detail, /只跟主人说/)
 })
 
 test('contacts：owner 专属工具对非主人拒绝', async () => {
