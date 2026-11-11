@@ -106,6 +106,22 @@ test('commands：/全员禁言 成功走 gate + setGroupWholeBan', async () => {
   assert.match(calls[1][1], /已开启全员禁言/)
 })
 
+test('commands：/名片 缺 @ 目标时给用法', async () => {
+  const replies = []
+  const bridge = {
+    config: {},
+    server: { currentSocket: () => ({ id: 'sock' }) },
+    botAdminBlockedReason: () => '',
+    routeKey: () => 'g:1',
+    safeReply: async (_m, text) => replies.push(text),
+  }
+  await handleAdminCommand({
+    message: { messageType: 'group', groupId: 1, userId: 1, ats: [] },
+    cmd: '名片', arg: '新名字', bridge,
+  })
+  assert.match(replies[0], /用法：\/名片 @某人/)
+})
+
 test('commands：/精华 对引用消息成功调用 setEssenceMsg', async () => {
   const calls = []
   const bridge = {
