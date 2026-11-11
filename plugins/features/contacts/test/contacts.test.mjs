@@ -94,6 +94,26 @@ test('contacts：历史搜索无命中时返回空结果', async () => {
   assert.match(result.detail, /没有找到/)
 })
 
+test('contacts：历史搜索命中时返回格式化结果', async () => {
+  const tools = []
+  registerQueryTools({
+    defineTool: (tool) => tool,
+    agentCtx: { tools: { register: (tool) => tools.push(tool) } },
+    route: { messageType: 'private', targetId: 1 }, key: 'u:1', role: 'owner',
+    bridge: {
+      config: { historyQueryEnabled: false, historySearchEnabled: true, historySearchDays: 7, historySearchLimit: 20, botQq: 9 },
+      chatKeyOf: () => 'u:1',
+      injectionSuppressed: () => false,
+      archive: { search: () => ({ hits: [{ userId: 2, name: 'A', ts: Date.now(), text: 'hello' }], scanned: 1 }) },
+    },
+    debugLog: () => {},
+  })
+  const tool = tools.find((item) => item.name === 'qq_search_history')
+  const result = await tool.execute({ keywords: 'hello' })
+  assert.equal(result.count >= 1, true)
+  assert.match(result.detail, /hello/)
+})
+
 test('contacts：owner 的 qq_list_chats 列出记录条数', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'qq-contacts-'))
   try {

@@ -31,7 +31,7 @@ if (coverage) {
     '--test-coverage-include=features/**',
     '--test-coverage-lines=27',
     '--test-coverage-branches=49',
-    '--test-coverage-functions=19',
+    '--test-coverage-functions=20',
   )
 }
 args.push(...files)
