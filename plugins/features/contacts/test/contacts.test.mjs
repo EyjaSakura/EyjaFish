@@ -90,6 +90,24 @@ test('contacts：无 OneBot 连接时历史查询明确报错', async () => {
   await assert.rejects(() => tool.execute({ count: 3 }), /当前无可用 OneBot 连接/)
 })
 
+test('contacts：群成员查询成功返回结果', async () => {
+  const tools = []
+  registerQueryTools({
+    defineTool: (tool) => tool,
+    agentCtx: { tools: { register: (tool) => tools.push(tool) } },
+    route: { messageType: 'group', targetId: 2002 }, key: 'g:2002', role: 'owner',
+    bridge: {
+      config: { memberQueryEnabled: true, botQq: 9, historyQueryEnabled: false },
+      queryGroupMembers: async (groupId, query) => ({ ok: true, text: `group=${groupId} kind=${query.kind}` }),
+    },
+    debugLog: () => {},
+  })
+  const tool = tools.find((item) => item.name === 'qq_member_info')
+  assert.ok(tool)
+  const result = await tool.execute({ query: '' })
+  assert.deepEqual(result, { found: true, detail: 'group=2002 kind=list' })
+})
+
 test('contacts：dry-run 历史查询返回明确说明', async () => {
   const tools = []
   registerQueryTools({
