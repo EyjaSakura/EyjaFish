@@ -57,7 +57,7 @@ export function registerSingTools({ defineTool, agentCtx, route, key, bridge }) 
     },
     output: {
       schema: { type: 'object', additionalProperties: false, properties: { sent: { type: 'boolean', required: true }, detail: { type: 'string', required: true }, file: { type: 'string' } } },
-      render: (_args, value) => [{ type: 'text', text: value.detail }],
+      render: (_args, value) => [{ type: 'text', text: value.detail + (value.file ? `\nfile=${value.file}` : '') }],
     },
     async execute(args) {
       // [sing-ungate] 写闸门会因 ttsEnabled=false 误杀白名单成员；权限由工具守卫白名单负责

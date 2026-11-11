@@ -31,7 +31,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File D:\DSH\qqbot\scripts\ci.ps1
 - typecheck bridge（基线 0，全绿）
 - typecheck features（基线 0，全绿）
 - 覆盖率 core+services（97 / 82 / 79）
-- 覆盖率 all-lib（80 / 73 / 70；当前 84.95 / 75.14 / 72.60）
+- 覆盖率 all-lib（80 / 73 / 70；当前 84.95 / 75.12 / 72.60）
 - 部署 smoke
 - 语法检查
 

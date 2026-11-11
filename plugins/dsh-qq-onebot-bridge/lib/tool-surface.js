@@ -81,7 +81,7 @@ export async function applyToolSurface({ agentCtx, route, key, role, surface, br
           const live = bridge.liveCapabilityBlock(surface, exec) // [live-perms]
           if (live) return live
           // [owner-auto-allow] 扩展工具自动放行，默认只允许主人
-          const __ownerAuto = /^(qq_face_|qq_hot_|qq_bili_|qq_qzone_|qq_set_|qq_post_|qq_send_to_user$|qq_download_image$|qq_list_chats$|qq_chat_digest$|qq_report_identity$|bili_)/.test(name)
+          const __ownerAuto = /^(qq_face_|qq_hot_|qq_bili_|qq_qzone_|qq_set_|qq_post_|qq_send_(?:to_user|audio_to)$|qq_download_image$|qq_list_chats$|qq_chat_digest$|qq_report_identity$|bili_)/.test(name)
           if (name === 'qq_send_voice') { // [guest-voice-tool] 白名单好友可发语音（写权限由工具内部校验）
           const __u = String(surface.subject).replace(/^user:/, '')
           if ([...bridge.config.allowUsers ?? [], ...bridge.config.adminUsers ?? []].map(String).includes(__u)) return undefined
@@ -208,7 +208,7 @@ export async function applyToolSurface({ agentCtx, route, key, role, surface, br
       // [self-tools] 这些工具不在权限表里，需显式加入白名单（关掉时不加）
       {
         const offSelf = new Set(bridge.capabilityOffTools(surface))
-        for (const n of ['qq_set_nickname', 'qq_set_signature', 'qq_set_avatar', 'qq_post_qzone', 'qq_delete_qzone', 'qq_download_image', 'qq_list_chats', 'qq_chat_digest', 'qq_set_friend_remark', 'qq_report_identity', 'qq_send_to_user', 'qq_face_save_qq', 'qq_face_last', 'qq_face_qq_list', 'qq_face_qq_send', 'qq_face_tag', 'qq_face_prune', 'qq_face_delete', 'qq_face_send_to', 'qq_hot_bili', 'qq_hot_douyin', 'qq_bili_video', 'qq_bili_subtitle', 'qq_recall', 'bili_set_nickname', 'bili_set_signature', 'bili_set_avatar', 'bili_get_profile', 'qq_qzone_posts', 'qq_qzone_list', 'qq_qzone_reply_comment', 'qq_qzone_comment', 'qq_qzone_delete_comment', 'qq_qzone_daily_diary']) {
+        for (const n of ['qq_set_nickname', 'qq_set_signature', 'qq_set_avatar', 'qq_post_qzone', 'qq_delete_qzone', 'qq_download_image', 'qq_list_chats', 'qq_chat_digest', 'qq_set_friend_remark', 'qq_report_identity', 'qq_send_to_user', 'qq_send_audio_to', 'qq_face_save_qq', 'qq_face_last', 'qq_face_qq_list', 'qq_face_qq_send', 'qq_face_tag', 'qq_face_prune', 'qq_face_delete', 'qq_face_send_to', 'qq_hot_bili', 'qq_hot_douyin', 'qq_bili_video', 'qq_bili_subtitle', 'qq_recall', 'bili_set_nickname', 'bili_set_signature', 'bili_set_avatar', 'bili_get_profile', 'qq_qzone_posts', 'qq_qzone_list', 'qq_qzone_reply_comment', 'qq_qzone_comment', 'qq_qzone_delete_comment', 'qq_qzone_daily_diary']) {
           if (!offSelf.has(n)) liveAllowed.add(n)
         }
       }
@@ -220,7 +220,7 @@ export async function applyToolSurface({ agentCtx, route, key, role, surface, br
           const live = bridge.liveCapabilityBlock(surface, exec)
           if (live) return live
           // [owner-auto-allow] 扩展工具自动放行，默认只允许主人
-          const __ownerAuto = /^(qq_face_|qq_hot_|qq_bili_|qq_qzone_|qq_set_|qq_post_|qq_send_to_user$|qq_download_image$|qq_list_chats$|qq_chat_digest$|qq_report_identity$|bili_)/.test(name)
+          const __ownerAuto = /^(qq_face_|qq_hot_|qq_bili_|qq_qzone_|qq_set_|qq_post_|qq_send_(?:to_user|audio_to)$|qq_download_image$|qq_list_chats$|qq_chat_digest$|qq_report_identity$|bili_)/.test(name)
           if (name === 'qq_send_voice') { // [guest-voice-tool] 白名单好友可发语音（写权限由工具内部校验）
           const __u = String(surface.subject).replace(/^user:/, '')
           if ([...bridge.config.allowUsers ?? [], ...bridge.config.adminUsers ?? []].map(String).includes(__u)) return undefined
