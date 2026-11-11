@@ -4,6 +4,8 @@ import assert from 'node:assert/strict'
 import { hooks } from '../index.js'
 import { handleGroupFiles } from '../group.js'
 import { handlePrivateFiles } from '../private.js'
+import { handleIncomingVideo } from '../video.js'
+import { onNotice } from '../notice.js'
 
 test('events：hooks 暴露私聊文件/视频/群文件/通知', () => {
   assert.deepEqual(Object.keys(hooks).sort(), ['handleGroupFiles', 'handleIncomingVideo', 'handlePrivateFiles', 'onNotice'])
@@ -42,4 +44,20 @@ test('events：私聊文件没有下载链接时给出明确提示', async () =>
     bridge,
   })
   assert.match(replies[0], /没有可下载链接/)
+})
+
+test('events：没有视频段时直接返回', async () => {
+  const message = { raw: { message: [] }, text: 'x' }
+  await handleIncomingVideo({ message, bridge: {}, debugLog: () => {} })
+  assert.equal(message.text, 'x')
+  assert.equal(message.__videoSaved, undefined)
+})
+
+test('events：bridge 已停止时通知直接返回', async () => {
+  let recorded = false
+  await onNotice({
+    notice: { noticeType: 'notify' },
+    bridge: { stopped: true, inbox: { record: () => { recorded = true } } },
+  })
+  assert.equal(recorded, false)
 })
