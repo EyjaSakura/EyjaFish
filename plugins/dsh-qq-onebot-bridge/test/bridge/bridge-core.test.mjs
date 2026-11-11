@@ -64,6 +64,7 @@ test('bridge 核心：/health 报告走 safeReply', async () => {
 test('bridge 核心：路由 / 主体 / 会话薄包装', () => {
   const { bridge } = fakeBridge()
   assert.equal(bridge.subjectOfChatFor({ messageType: 'private', userId: 1 }), 'user:1')
+  assert.equal(bridge.subjectOfSenderFor({ messageType: 'private', userId: 2 }), 'user:2')
   assert.equal(bridge.isWriterHeldFor({ name: 'SessionAlreadyOwnedError' }), true)
   assert.equal(bridge.isWriterHeldFor(new Error('x')), false)
 
@@ -233,6 +234,19 @@ test('bridge 核心：engage / 注入回放写闸门', () => {
   assert.equal(bridge.engageWriteBlocked({}), false)
   bridge.config.injectDryRun = false
   assert.equal(bridge.engageWriteBlocked({ __injected: true }), false)
+})
+
+test('bridge 核心：markSeen 写 qq-last-seen.json', () => {
+  const { bridge } = fakeBridge()
+  const dir = mkdtempSync(join(tmpdir(), 'qq-seen-'))
+  try {
+    bridge.memoryDir = join(dir, 'memory')
+    bridge.markSeen('u:7')
+    const saved = JSON.parse(readFileSync(join(dir, 'qq-last-seen.json'), 'utf8'))
+    assert.equal(typeof saved['u:7'], 'number')
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
 })
 
 test('bridge 核心：writeGate 允许/拒绝文案', () => {
