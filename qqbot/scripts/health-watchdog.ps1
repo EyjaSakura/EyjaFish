@@ -27,6 +27,29 @@ if ($TestAlert) {
   exit $LASTEXITCODE
 }
 
+$MaintState = Join-Path $Root 'data\maintenance-last.txt'
+
+function Invoke-Maintenance {
+  try {
+    if (Test-Path $MaintState) {
+      $last = [datetime](Get-Content $MaintState -Raw -Encoding UTF8).Trim()
+      if (((Get-Date) - $last).TotalHours -lt 24) { return }
+    }
+    $rotate = Join-Path $Root 'scripts\rotate-logs.ps1'
+    $prune = Join-Path $Root 'scripts\prune-backups.ps1'
+    if (Test-Path $rotate) {
+      & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $rotate -Apply 2>&1 | Out-Null
+    }
+    if (Test-Path $prune) {
+      & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $prune -Apply 2>&1 | Out-Null
+    }
+    Set-Content -Path $MaintState -Value (Get-Date).ToString('o') -Encoding UTF8
+    Log 'MAINTENANCE rotate-logs/prune-backups done'
+  } catch {
+    Log ("MAINTENANCE FAILED: {0}" -f $_.Exception.Message)
+  }
+}
+
 function Ping-Heartbeat([bool]$ok) {
   $file = Join-Path $Root 'data\heartbeat-config.json'
   if (-not (Test-Path $file)) { return }
@@ -42,6 +65,8 @@ function Ping-Heartbeat([bool]$ok) {
     Log ("HEARTBEAT FAILED: {0}" -f $_.Exception.Message)
   }
 }
+
+Invoke-Maintenance
 
 $output = & powershell -NoProfile -ExecutionPolicy Bypass -File $Health 2>&1
 $code = $LASTEXITCODE

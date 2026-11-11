@@ -41,7 +41,7 @@ D:\DSH\qqbot\backups\plugin\plugin-YYYYMMDD-HHmmss.zip
 
 内容为 bridge 插件目录全部文件，不含运行时 data。
 
-维护（默认 dry-run，不会删数据）：
+维护已接入 `health-watchdog`（每 24 小时最多一次）；也可以手动 dry-run：
 
 ```powershell
 # 日志 > 20MB 轮转，保留 3 份

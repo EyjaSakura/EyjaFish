@@ -73,7 +73,7 @@
 - 现状：已加 `scripts/rotate-logs.ps1`；`douyin-watch.log` 44.4 MB 已轮转为 `.1`，新文件已建立
 - 现状：已加 `scripts/prune-backups.ps1`；plugin zip 11 → 8，旧 3 个移到 `backups\archive\plugin`
 - 风险：长期运行继续膨胀；故障时难定位；备份目录混有历史源码
-- 剩余：还没有注册每日定时任务；当前手动/可 nightly 调用
+- 已接入 `health-watchdog`：每 24 小时最多执行一次，状态写 `data\maintenance-last.txt`
 - 优先级：P2；不清理数据，只加策略
 
 ### 4c. 源码 git / lockfile 已建立
