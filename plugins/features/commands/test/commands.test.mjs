@@ -68,6 +68,27 @@ test('commands：群管命令在私聊直接拒绝', async () => {
   assert.match(replies[0], /仅支持群聊/)
 })
 
+test('commands：/公告 缺内容 / /精华 缺引用时给用法', async () => {
+  const replies = []
+  const bridge = {
+    config: {},
+    server: { currentSocket: () => ({ id: 'sock' }) },
+    botAdminBlockedReason: () => '',
+    routeKey: () => 'g:1',
+    safeReply: async (_m, text) => replies.push(text),
+  }
+  await handleAdminCommand({
+    message: { messageType: 'group', groupId: 1, userId: 1 },
+    cmd: '公告', arg: '', bridge,
+  })
+  await handleAdminCommand({
+    message: { messageType: 'group', groupId: 1, userId: 1, reply: null },
+    cmd: '精华', arg: '', bridge,
+  })
+  assert.match(replies[0], /用法：\/公告/)
+  assert.match(replies[1], /引用一条消息/)
+})
+
 test('commands：/退群 默认关闭时说明原因', async () => {
   const replies = []
   const bridge = {
