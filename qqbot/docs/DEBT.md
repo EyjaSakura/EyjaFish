@@ -49,7 +49,7 @@
 
 ### 2d. feature 包本地单测已覆盖 14/14
 
-- 现状：14 个 feature 包中，14 个 feature 均已有本地单测（62 项，覆盖率 35.34 / 63.01 / 19.46）；commands 已补 /help 行为测试
+- 现状：14 个 feature 包中，14 个 feature 均已有本地单测（63 项，覆盖率 35.34 / 64.05 / 19.91）；commands 已补 /help 行为测试
 - 已加：`scripts/test-features.mjs` + CI `feature tests` 步骤
 - 风险：其余 feature 的业务分支主要靠手测/线上暴露
 - 验收：每个 feature 至少一个可独立跑的单测；CI 覆盖全部 feature

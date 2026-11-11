@@ -251,6 +251,27 @@ test('commands：/名片 缺 @ 目标时给用法', async () => {
   assert.match(replies[0], /用法：\/名片 @某人/)
 })
 
+test('commands：/头衔 成功调用 setGroupSpecialTitle', async () => {
+  const calls = []
+  const bridge = {
+    config: { botQq: 9 },
+    server: {
+      currentSocket: () => ({ id: 'sock' }),
+      setGroupSpecialTitle: async (_s, groupId, target, value) => calls.push(['title', groupId, target, value]),
+    },
+    botAdminBlockedReason: () => '',
+    routeKey: () => 'g:1',
+    gate: { run: async (_a, _k, _d, fn) => { await fn(); return { ok: true } } },
+    safeReply: async (_m, text) => calls.push(['reply', text]),
+  }
+  await handleAdminCommand({
+    message: { messageType: 'group', groupId: 1, userId: 1, ats: [2] },
+    cmd: '头衔', arg: '头衔', bridge,
+  })
+  assert.deepEqual(calls[0], ['title', 1, 2, '头衔'])
+  assert.match(calls[1][1], /已更新 2 的头衔/)
+})
+
 test('commands：/公告 无 OneBot 连接时明确拒绝', async () => {
   const replies = []
   const bridge = {
