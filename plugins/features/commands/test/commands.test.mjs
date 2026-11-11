@@ -106,6 +106,27 @@ test('commands：/全员禁言 成功走 gate + setGroupWholeBan', async () => {
   assert.match(calls[1][1], /已开启全员禁言/)
 })
 
+test('commands：/解除全员禁言 成功调用 setGroupWholeBan(false)', async () => {
+  const calls = []
+  const bridge = {
+    config: {},
+    server: {
+      currentSocket: () => ({ id: 'sock' }),
+      setGroupWholeBan: async (_s, groupId, enable) => calls.push(['ban', groupId, enable]),
+    },
+    botAdminBlockedReason: () => '',
+    routeKey: () => 'g:1',
+    gate: { run: async (_a, _k, _d, fn) => { await fn(); return { ok: true } } },
+    safeReply: async (_m, text) => calls.push(['reply', text]),
+  }
+  await handleAdminCommand({
+    message: { messageType: 'group', groupId: 1, userId: 1 },
+    cmd: '解除全员禁言', arg: '', bridge,
+  })
+  assert.deepEqual(calls[0], ['ban', 1, false])
+  assert.match(calls[1][1], /已解除全员禁言/)
+})
+
 test('commands：/kick 先进入二次确认，不直接踢人', async () => {
   const replies = []
   const pendingKicks = new Map()

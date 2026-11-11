@@ -30,7 +30,7 @@ if (coverage) {
     '--experimental-test-coverage',
     '--test-coverage-include=features/**',
     '--test-coverage-lines=26',
-    '--test-coverage-branches=50',
+    '--test-coverage-branches=51',
     '--test-coverage-functions=17',
   )
 }
