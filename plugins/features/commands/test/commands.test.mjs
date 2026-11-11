@@ -106,6 +106,27 @@ test('commands：/全员禁言 成功走 gate + setGroupWholeBan', async () => {
   assert.match(calls[1][1], /已开启全员禁言/)
 })
 
+test('commands：/精华 对引用消息成功调用 setEssenceMsg', async () => {
+  const calls = []
+  const bridge = {
+    config: {},
+    server: {
+      currentSocket: () => ({ id: 'sock' }),
+      setEssenceMsg: async (_s, messageId) => calls.push(['essence', messageId]),
+    },
+    botAdminBlockedReason: () => '',
+    routeKey: () => 'g:1',
+    gate: { run: async (_a, _k, _d, fn) => { await fn(); return { ok: true } } },
+    safeReply: async (_m, text) => calls.push(['reply', text]),
+  }
+  await handleAdminCommand({
+    message: { messageType: 'group', groupId: 1, userId: 1, reply: { messageId: 'm1' } },
+    cmd: '精华', arg: '', bridge,
+  })
+  assert.deepEqual(calls[0], ['essence', 'm1'])
+  assert.match(calls[1][1], /已设为精华/)
+})
+
 test('commands：/公告 gate 拒绝时报告失败', async () => {
   const replies = []
   const bridge = {
