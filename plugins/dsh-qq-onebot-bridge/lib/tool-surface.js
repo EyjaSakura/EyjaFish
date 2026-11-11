@@ -12,7 +12,12 @@ export async function applyToolSurface({ agentCtx, route, key, role, surface, br
     //    所以失败时回落到 `{allow: []}`（把可限制的全局工具全挡掉），并**把原因写进 debug 日志**
     //    （以前只写 logger.warn，桥接日志里根本看不到，漏了整整一天）。
     let restrictNote = ''
-    if (typeof tools?.restrict === 'function') {
+    // The qq-readonly preset deliberately mounts no host tools. Calling
+    // restrict() with read/glob/grep would be rejected as "unknown global
+    // tools" and produce a loud fallback every guest session. The guard below
+    // already enforces the scoped allowlist, so skip restrict for this preset.
+    const scopedOnlyPreset = role?.preset === 'qq-readonly' || role?.readonlyPreset === 'qq-readonly'
+    if (typeof tools?.restrict === 'function' && !scopedOnlyPreset) {
       // [restrict-filter] 只保留本版本真实存在的全局工具名，避免整段被拒后回落 allow=[]
       const KNOWN_GLOBAL = new Set(['ask_user_question', 'create_goal', 'edit', 'exit_plan_mode', 'get_goal',
         'glob', 'grep', 'interrupt_agent', 'job_kill', 'job_list', 'job_output', 'list_agents',
@@ -30,6 +35,8 @@ export async function applyToolSurface({ agentCtx, route, key, role, surface, br
           restrictNote = `restrict 不可用（${error2?.message ?? error2}）`
         }
       }
+    } else if (scopedOnlyPreset) {
+      restrictNote = 'skip restrict（qq-readonly 无宿主工具，guard 兜底）'
     } else {
       restrictNote = 'tools.restrict 不存在'
     }
