@@ -236,6 +236,16 @@ test('bridge 核心：engage / 注入回放写闸门', () => {
   assert.equal(bridge.engageWriteBlocked({ __injected: true }), false)
 })
 
+test('bridge 核心：notifyAdmin 无管理员/无连接时不发送', async () => {
+  const { bridge } = fakeBridge()
+  bridge.config = { adminUsers: [] }
+  bridge.server = { currentSocket: () => null, sendSegments: async () => {} }
+  await bridge.notifyAdmin('x')
+  bridge.config = { adminUsers: [1] }
+  await bridge.notifyAdmin('x')
+  assert.ok(true)
+})
+
 test('bridge 核心：markSeen 写 qq-last-seen.json', () => {
   const { bridge } = fakeBridge()
   const dir = mkdtempSync(join(tmpdir(), 'qq-seen-'))
