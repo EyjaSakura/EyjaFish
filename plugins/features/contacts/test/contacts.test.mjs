@@ -89,3 +89,24 @@ test('contacts：无 OneBot 连接时历史查询明确报错', async () => {
   assert.ok(tool)
   await assert.rejects(() => tool.execute({ count: 3 }), /当前无可用 OneBot 连接/)
 })
+
+test('contacts：dry-run 历史查询返回明确说明', async () => {
+  const tools = []
+  registerQueryTools({
+    defineTool: (tool) => tool,
+    agentCtx: { tools: { register: (tool) => tools.push(tool) } },
+    route: { messageType: 'private', targetId: 1 }, key: 'u:1', role: 'owner',
+    bridge: {
+      config: { historyQueryEnabled: true, botQq: 9 },
+      server: {
+        currentSocket: () => ({ id: 'sock' }),
+        getFriendMsgHistory: async () => ({ dryRun: true }),
+      },
+    },
+    debugLog: () => {},
+  })
+  const tool = tools.find((item) => item.name === 'qq_recent_history')
+  const result = await tool.execute({ count: 3 })
+  assert.equal(result.count, 0)
+  assert.match(result.detail, /dry-run/)
+})
