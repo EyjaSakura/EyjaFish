@@ -60,10 +60,21 @@
 
 - 已修：`bridge-initialize` 没把 `routeKey` 传给 `createTurnRuntime`，每条真人消息日志都报 `[session-rotate] failed: routeKey is not a function`；补 `routeKey: (message) => bridge.routeKey(message)` 后重启，日志不再出现
 - 已修：`pruneTrashDirs` 调 `pruneTrash` 时没注入 `exists/readdir/stat/rm`，启动时日志报 `trash retention failed: exists is not a function`；`image-retention.js` 现在直接注入 `node:fs`
-- 已补回归：`test/image-retention.test.mjs` 用真实临时目录验证过期日期桶会被真删；`test:new` 从 175 增至 181
+- 已补回归：`test/image-retention.test.mjs` 用真实临时目录验证过期日期桶会被真删；`test:new` 从 175 增至 190
+- 已补：本地 `dsh-tool-fs-jailed` 插件（`lib/plugins/dsh-tool-fs-jailed/index.js`），提供 root 限定的 `read/glob/grep`；`test/jailed-fs.test.mjs` 覆盖越狱拒绝
+- 已补：profile 增加 `qq-readonly` preset（`plugins: []`），guest 不再回退 standard 的完整 `tool-fs/pwsh`；owner 显式 `standard` 保留全量
 - 未修（体检遗留）：
-  - `jailed fs plugin load failed: dsh-tool-fs-jailed not found`：宿主 profile 没装该插件；需要决定是装插件还是关闭 `jailedFs` 工具面
-  - `mount preset qq-coding failed: Unknown agent preset`：profile 引用了已不存在的 preset，当前回退 `standard`；需要改配置或补 preset
+  - `jailed fs plugin load failed` 已不再出现；guest 实际会话需在收到下一条消息后复核 `read`/越狱拦截
+  - `qq-coding` 仍只在代码里作为默认值；owner 已显式 `standard`，不再触发该 fallback
+
+### 2f. 工具面权威已确定为 config / ACL policy
+
+- 现状：运行时日志 `acl policy source -> config`；`perms.json` 未被 `resolveToolSurface` 读取
+- 已处理：`perms.json` 备份为 `backups\perms.json.legacy-*`，并在主目录改名为 `perms.json.legacy`
+- 唯一权威：profile 的 `identity` + ACL policy
+- guest 工具面：`read/glob/grep`（jailed fs）+ web + QQ 成员/历史；无 write/shell/media/image
+- owner 工具面：`standard` 全量（用户明确接受风险）
+- 注意：后续改权限只改 profile/ACL，不再看 `perms.json`
 
 ## P2
 
@@ -103,13 +114,13 @@
 
 ### 5. functions 覆盖仍低于 lines
 
-- 现状：all-lib 84.73 / 75.30 / 72.34（lines / branches / functions）
+- 现状：all-lib 84.95 / 75.13 / 72.60（lines / branches / functions）
 - 风险：默认回调、错误分支可能没测
 - 验收：functions ≥ 75%，branches ≥ 80%（分批提升，不一次拉满）
 
 ### 5b. all-lib 函数覆盖率已恢复到 70
 
-- 现状：2026-11-11 为 72.34%，CI 阈值已恢复到 70
+- 现状：2026-11-11 为 72.60%，CI 阈值已恢复到 70
 - 已补：store / stats / trace / archive 测试
 - 规则：阈值只升不降；新增代码不得把 functions 拉回 70 以下
 - 验收：保持 80 / 73 / 70 以上

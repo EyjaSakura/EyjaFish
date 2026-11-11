@@ -246,6 +246,9 @@ feature 只能从以下路径导入桥接能力：
 - 写操作（发消息、发文件、改群、踢人、审批）必须过 ActionGate / `bridge.writeGate`
 - 命令参数一律空白分隔；不要接受粘连参数
 - 每个关闭分支必须给出真实原因，不能静默失败
+- 工具面唯一权威是 profile 的 `identity` + ACL policy；`perms.json` 已退役，不得再作为判定来源
+- guest 的文件读取只能走 `dsh-tool-fs-jailed`（root 限定）；不得回退到宿主 `tool-fs` 的完整读
+- owner 已明确选择 `standard` 全量工具面，风险由 owner 承担；修改此决定必须留记录
 
 ### 4.5 数据处理
 
@@ -509,7 +512,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File D:\DSH\qqbot\scripts\health.
 
 ```text
 core+services：行 97 / 分支 82 / 函数 79
-all-lib（排除 bridge）：行 80 / 分支 73 / 函数 70（当前 84.73 / 75.30 / 72.34）
+all-lib（排除 bridge）：行 80 / 分支 73 / 函数 70（当前 84.95 / 75.13 / 72.60）
 bridge.js：行 55.43 / 分支 73.33 / 函数 3.31（基线 59 / 85 / 12，只升不降）
 ```
 
@@ -547,7 +550,7 @@ core+services 0 / bridge 0 / features 0
 覆盖率已恢复到标准阈值：
 
 ```text
-all-lib 80 / 73 / 70，当前 84.73 / 75.30 / 72.34
+all-lib 80 / 73 / 70，当前 84.95 / 75.13 / 72.60
 ```
 
 以后若因外部原因必须临时建基线：

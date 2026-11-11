@@ -1,9 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, existsSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, existsSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { registerJailedFsTools } from '../lib/services/jailed-fs.js'
+import { apply } from '../lib/plugins/dsh-tool-fs-jailed/index.js'
 
 function harness(overrides = {}) {
   const warns = []
@@ -22,6 +23,12 @@ function harness(overrides = {}) {
     ...overrides,
   }
   return { deps, warns, applied }
+}
+
+function mount(root, extraRoots = []) {
+  const tools = new Map()
+  apply({ tools: { register: (tool) => tools.set(tool.name, tool) } }, { root, extraRoots })
+  return tools
 }
 
 test('找不到插件：warn 且不 apply', async () => {
@@ -60,4 +67,55 @@ test('加载失败：warn 不抛', async () => {
   const { deps, warns } = harness({ loadPlugin: async () => { throw new Error('load') } })
   await registerJailedFsTools(deps)
   assert.match(warns[0], /注册受限读工具失败/)
+})
+
+test('jailed fs：read 只读 jail 内文件', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'qq-jail-'))
+  try {
+    writeFileSync(join(root, 'hello.txt'), 'hello\nworld\n')
+    const tools = mount(root)
+    const value = await tools.get('read').execute({ file_path: 'hello.txt' })
+    assert.match(value.text, /hello/)
+    assert.match(value.text, /world/)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('jailed fs：read 拒绝越狱绝对路径', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'qq-jail-'))
+  try {
+    const tools = mount(root)
+    await assert.rejects(
+      () => tools.get('read').execute({ file_path: 'C:\\Windows\\win.ini' }),
+      /outside jail/,
+    )
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('jailed fs：glob 只返回 jail 内相对路径', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'qq-jail-'))
+  try {
+    mkdirSync(join(root, 'docs'))
+    writeFileSync(join(root, 'docs', 'a.md'), 'a')
+    const tools = mount(root)
+    const value = await tools.get('glob').execute({ pattern: '**/*.md' })
+    assert.match(value.text, /docs\/a\.md/)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('jailed fs：grep 只搜 jail 内文件', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'qq-jail-'))
+  try {
+    writeFileSync(join(root, 'a.txt'), 'alpha\nbeta\n')
+    const tools = mount(root)
+    const value = await tools.get('grep').execute({ pattern: 'beta' })
+    assert.match(value.text, /a\.txt:2/)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
 })
