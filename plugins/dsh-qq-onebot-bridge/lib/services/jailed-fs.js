@@ -15,6 +15,12 @@ export async function registerJailedFsTools({
   logger,
   debugLog = () => {},
 }) {
+  // Owner already mounts the full standard preset; adding a second jailed
+  // read tool would shadow that surface. Keep the jail for guest roles only.
+  if (role?.guest === false) {
+    debugLog(`${key}: jailed fs skipped for non-guest role`)
+    return
+  }
   try {
     if (!file) {
       logger?.warn('[权限模型] 受限读插件 dsh-tool-fs-jailed 没找到（该会话将无文件读取能力）；'

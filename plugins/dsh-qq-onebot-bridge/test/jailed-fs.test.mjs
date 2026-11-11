@@ -38,6 +38,12 @@ test('找不到插件：warn 且不 apply', async () => {
   assert.equal(applied.length, 0)
 })
 
+test('owner 角色：不挂 jailed fs，保留 standard 全量', async () => {
+  const { deps, applied } = harness({ role: { cwd: 'D:/work', guest: false } })
+  await registerJailedFsTools(deps)
+  assert.equal(applied.length, 0)
+})
+
 test('正常注册：root = role.cwd', async () => {
   const { deps, applied } = harness()
   await registerJailedFsTools(deps)

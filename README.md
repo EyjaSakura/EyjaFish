@@ -37,7 +37,7 @@ bridge.js          997 非空行
 bridge-facade.js   100% 覆盖
 bridge core        21 tests；57 / 83 / 10（CI 阈值）
 feature tests      63（14/14，覆盖 35.34/64.05/19.91）
-test:new           190
+test:new           191
 ```
 
 ## 说明
