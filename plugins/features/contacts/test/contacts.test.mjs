@@ -73,6 +73,27 @@ test('contacts：主人按 chat 取素材并截断输出', async () => {
   }
 })
 
+test('contacts：历史搜索无命中时返回空结果', async () => {
+  const tools = []
+  registerQueryTools({
+    defineTool: (tool) => tool,
+    agentCtx: { tools: { register: (tool) => tools.push(tool) } },
+    route: { messageType: 'private', targetId: 1 }, key: 'u:1', role: 'owner',
+    bridge: {
+      config: { historyQueryEnabled: false, historySearchEnabled: true, historySearchDays: 7, historySearchLimit: 20, botQq: 9 },
+      chatKeyOf: () => 'u:1',
+      injectionSuppressed: () => false,
+      archive: { search: () => ({ hits: [], scanned: 0 }) },
+    },
+    debugLog: () => {},
+  })
+  const tool = tools.find((item) => item.name === 'qq_search_history')
+  assert.ok(tool)
+  const result = await tool.execute({ keywords: '找不到' })
+  assert.equal(result.count, 0)
+  assert.match(result.detail, /没有找到/)
+})
+
 test('contacts：owner 的 qq_list_chats 列出记录条数', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'qq-contacts-'))
   try {
