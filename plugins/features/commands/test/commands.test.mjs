@@ -68,6 +68,27 @@ test('commands：群管命令在私聊直接拒绝', async () => {
   assert.match(replies[0], /仅支持群聊/)
 })
 
+test('commands：/公告 成功走 gate + sendGroupNotice', async () => {
+  const calls = []
+  const bridge = {
+    config: {},
+    server: {
+      currentSocket: () => ({ id: 'sock' }),
+      sendGroupNotice: async (_s, groupId, text) => calls.push(['notice', groupId, text]),
+    },
+    botAdminBlockedReason: () => '',
+    routeKey: () => 'g:1',
+    gate: { run: async (_action, _key, _desc, fn) => { await fn(); return { ok: true } } },
+    safeReply: async (_m, text) => calls.push(['reply', text]),
+  }
+  await handleAdminCommand({
+    message: { messageType: 'group', groupId: 1, userId: 1 },
+    cmd: '公告', arg: 'hello', bridge,
+  })
+  assert.deepEqual(calls[0], ['notice', 1, 'hello'])
+  assert.match(calls[1][1], /群公告已发布/)
+})
+
 test('commands：/公告 缺内容 / /精华 缺引用时给用法', async () => {
   const replies = []
   const bridge = {
