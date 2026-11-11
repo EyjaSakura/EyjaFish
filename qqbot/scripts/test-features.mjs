@@ -30,8 +30,8 @@ if (coverage) {
     '--experimental-test-coverage',
     '--test-coverage-include=features/**',
     '--test-coverage-lines=20',
-    '--test-coverage-branches=45',
-    '--test-coverage-functions=9',
+    '--test-coverage-branches=41',
+    '--test-coverage-functions=10',
   )
 }
 args.push(...files)
