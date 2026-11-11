@@ -95,6 +95,25 @@ test('contacts：owner 的 qq_list_chats 列出记录条数', async () => {
   }
 })
 
+test('contacts：owner 聊天列表为空时返回空提示', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'qq-contacts-'))
+  try {
+    const tools = []
+    registerOwnerTools({
+      defineTool: (tool) => tool,
+      agentCtx: { tools: { register: (tool) => tools.push(tool) } },
+      route: { targetId: '1' }, key: 'u:1', role: 'owner',
+      bridge: { ownerQQ: () => '1', contacts: () => ({}), memoryDir: dir, config: {} },
+      debugLog: () => {},
+    })
+    const list = tools.find((tool) => tool.name === 'qq_list_chats')
+    const result = await list.execute({})
+    assert.match(result.detail, /还没有任何聊天记录/)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
 test('contacts：无 OneBot 连接时历史查询明确报错', async () => {
   const tools = []
   registerQueryTools({
