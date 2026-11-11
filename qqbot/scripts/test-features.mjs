@@ -29,9 +29,9 @@ if (coverage) {
   args.push(
     '--experimental-test-coverage',
     '--test-coverage-include=features/**',
-    '--test-coverage-lines=26',
-    '--test-coverage-branches=51',
-    '--test-coverage-functions=17',
+    '--test-coverage-lines=27',
+    '--test-coverage-branches=50',
+    '--test-coverage-functions=19',
   )
 }
 args.push(...files)

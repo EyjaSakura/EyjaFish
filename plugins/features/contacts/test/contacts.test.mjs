@@ -73,6 +73,28 @@ test('contacts：主人按 chat 取素材并截断输出', async () => {
   }
 })
 
+test('contacts：owner 的 qq_list_chats 列出记录条数', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'qq-contacts-'))
+  try {
+    writeFileSync(join(dir, 'u_2.json'), JSON.stringify({
+      history: [{ role: 'user', text: 'hello', ts: Date.now() }],
+    }), 'utf8')
+    const tools = []
+    registerOwnerTools({
+      defineTool: (tool) => tool,
+      agentCtx: { tools: { register: (tool) => tools.push(tool) } },
+      route: { targetId: '1' }, key: 'u:1', role: 'owner',
+      bridge: { ownerQQ: () => '1', contacts: () => ({}), memoryDir: dir, config: {} },
+      debugLog: () => {},
+    })
+    const list = tools.find((tool) => tool.name === 'qq_list_chats')
+    const result = await list.execute({})
+    assert.match(result.detail, /记录 1 条/)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
 test('contacts：无 OneBot 连接时历史查询明确报错', async () => {
   const tools = []
   registerQueryTools({
