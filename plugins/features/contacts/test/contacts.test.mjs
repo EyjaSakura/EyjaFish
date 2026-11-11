@@ -94,6 +94,25 @@ test('contacts：历史搜索无命中时返回空结果', async () => {
   assert.match(result.detail, /没有找到/)
 })
 
+test('contacts：历史搜索缺关键词时要求输入', async () => {
+  const tools = []
+  registerQueryTools({
+    defineTool: (tool) => tool,
+    agentCtx: { tools: { register: (tool) => tools.push(tool) } },
+    route: { messageType: 'private', targetId: 1 }, key: 'u:1', role: 'owner',
+    bridge: {
+      config: { historyQueryEnabled: false, historySearchEnabled: true },
+      chatKeyOf: () => 'u:1',
+      injectionSuppressed: () => false,
+      archive: { search: () => { throw new Error('不应检索') } },
+    },
+    debugLog: () => {},
+  })
+  const tool = tools.find((item) => item.name === 'qq_search_history')
+  const result = await tool.execute({ keywords: '  ' })
+  assert.deepEqual(result, { count: 0, detail: '请给出要搜索的关键词。' })
+})
+
 test('contacts：注入回合跳过历史搜索', async () => {
   const tools = []
   registerQueryTools({
