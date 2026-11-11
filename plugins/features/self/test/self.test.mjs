@@ -17,3 +17,20 @@ test('self：非管理员不注册任何工具', () => {
   assert.equal(tools.length, 0)
   assert.ok(logs.some((line) => line.includes('not admin')))
 })
+
+test('self：管理员注册 self 工具面', () => {
+  const tools = []
+  registerSelfTools({
+    defineTool: (tool) => tool,
+    agentCtx: { tools: { register: (tool) => tools.push(tool) } },
+    route: { targetId: 1 }, key: 'u:1',
+    role: { subjectId: 'u:1' },
+    bridge: {
+      config: { adminUsers: [1], biliSessdata: '' },
+      server: { currentSocket: () => ({ id: 'sock' }), action: async () => ({}) },
+    },
+    debugLog: () => {},
+  })
+  assert.ok(tools.length > 0)
+  assert.ok(tools.some((tool) => tool.name === 'qq_hot_bili'))
+})
