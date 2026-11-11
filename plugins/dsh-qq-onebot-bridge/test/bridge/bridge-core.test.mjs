@@ -222,6 +222,19 @@ test('bridge 核心：通知/请求入口转给 inboundRuntime', async () => {
   ])
 })
 
+test('bridge 核心：engage / 注入回放写闸门', () => {
+  const { bridge } = fakeBridge()
+  bridge.config = { engageEnabled: true, injectDryRun: true }
+  bridge.engageSwitches = { k: true, off: false }
+  assert.equal(bridge.engageOn('k'), true)
+  assert.equal(bridge.engageOn('off'), false)
+  assert.match(bridge.engageBlockedReason('发送'), /injectDryRun=true/)
+  assert.equal(bridge.engageWriteBlocked({ __injected: true }), true)
+  assert.equal(bridge.engageWriteBlocked({}), false)
+  bridge.config.injectDryRun = false
+  assert.equal(bridge.engageWriteBlocked({ __injected: true }), false)
+})
+
 test('bridge 核心：writeGate 允许/拒绝文案', () => {
   const { bridge } = fakeBridge()
   bridge.canRun = () => ({ allowed: true })
