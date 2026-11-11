@@ -32,6 +32,7 @@
 
 ## 外部入口
 
+- 源码仓库：https://github.com/EyjaSakura/EyjaFish
 - 源码根：`D:\DSH\plugins\README.md`
 - 运行工作区：`D:\DSH\qqbot\README.md`
 - 插件速查：`D:\DSH\plugins\features\README.md`
