@@ -106,6 +106,27 @@ test('commands：/全员禁言 成功走 gate + setGroupWholeBan', async () => {
   assert.match(calls[1][1], /已开启全员禁言/)
 })
 
+test('commands：/名片 成功调用 setGroupCard', async () => {
+  const calls = []
+  const bridge = {
+    config: { botQq: 9 },
+    server: {
+      currentSocket: () => ({ id: 'sock' }),
+      setGroupCard: async (_s, groupId, target, value) => calls.push(['card', groupId, target, value]),
+    },
+    botAdminBlockedReason: () => '',
+    routeKey: () => 'g:1',
+    gate: { run: async (_a, _k, _d, fn) => { await fn(); return { ok: true } } },
+    safeReply: async (_m, text) => calls.push(['reply', text]),
+  }
+  await handleAdminCommand({
+    message: { messageType: 'group', groupId: 1, userId: 1, ats: [2] },
+    cmd: '名片', arg: '新名字', bridge,
+  })
+  assert.deepEqual(calls[0], ['card', 1, 2, '新名字'])
+  assert.match(calls[1][1], /已更新 2 的群名片/)
+})
+
 test('commands：/名片 缺 @ 目标时给用法', async () => {
   const replies = []
   const bridge = {
