@@ -68,12 +68,12 @@
 - 现状：启停插件需要重启 Web（秒级）
 - 验收：若需要，接入 Cordis HMR；否则在文档中明确“重启级”是产品决策
 
-### 4b. 日志 / 备份没有保留策略
+### 4b. 日志 / 备份保留脚本已建立，缺定时任务
 
-- 现状：`logs` 约 92 MB / 406 文件；`douyin-watch.log` 单文件约 46 MB
-- 现状：`backups` 约 240 MB / 2,596 文件；11 个 plugin zip
+- 现状：已加 `scripts/rotate-logs.ps1`；`douyin-watch.log` 44.4 MB 已轮转为 `.1`，新文件已建立
+- 现状：已加 `scripts/prune-backups.ps1`；plugin zip 11 → 8，旧 3 个移到 `backups\archive\plugin`
 - 风险：长期运行继续膨胀；故障时难定位；备份目录混有历史源码
-- 验收：日志按大小/日期轮转；备份只保留最近 N 份 + 每月归档
+- 剩余：还没有注册每日定时任务；当前手动/可 nightly 调用
 - 优先级：P2；不清理数据，只加策略
 
 ### 4c. 源码 git / lockfile 已建立
@@ -82,6 +82,13 @@
 - 已跟踪：bridge、features、qqbot scripts/docs、配置模板；不跟踪 data/logs/backups/密钥
 - lockfile：`plugins/dsh-qq-onebot-bridge/package-lock.json` 已生成（`--legacy-peer-deps`，peer 冲突已记录）
 - 边界：历史提交从 2026-11-11 开始；之前的回滚仍靠 zip
+
+### 4d. data ACL 已收紧
+
+- 现状：`D:\DSH\qqbot\data` 关闭继承，仅 Administrators / SYSTEM / 当前用户可访问
+- 已验证：当前用户可读写；health HEALTH OK
+- 例外：`health-alert-state.json` 由 SYSTEM 创建，当前用户 ACL 修改被拒；不影响运行
+- 回滚：ACL 备份在 `backups\data-acl-before-tighten.txt`
 
 ### 5. functions 覆盖仍低于 lines
 
