@@ -225,6 +225,22 @@ test('commands：/名片 缺 @ 目标时给用法', async () => {
   assert.match(replies[0], /用法：\/名片 @某人/)
 })
 
+test('commands：/公告 无 OneBot 连接时明确拒绝', async () => {
+  const replies = []
+  const bridge = {
+    config: {},
+    server: { currentSocket: () => null },
+    botAdminBlockedReason: () => '',
+    routeKey: () => 'g:1',
+    safeReply: async (_m, text) => replies.push(text),
+  }
+  await handleAdminCommand({
+    message: { messageType: 'group', groupId: 1, userId: 1 },
+    cmd: '公告', arg: 'hello', bridge,
+  })
+  assert.match(replies[0], /当前无可用连接/)
+})
+
 test('commands：/精华 对引用消息成功调用 setEssenceMsg', async () => {
   const calls = []
   const bridge = {
