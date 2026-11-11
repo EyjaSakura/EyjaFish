@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import { hooks } from '../index.js'
 import { handleHelp } from '../help.js'
 import { handleAdminCommand } from '../admin.js'
+import { handleOpsCommand } from '../ops.js'
 
 test('commands：hooks 暴露六个命令/工具入口', () => {
   assert.deepEqual(Object.keys(hooks).sort(), [
@@ -43,4 +44,16 @@ test('commands：群管命令在私聊直接拒绝', async () => {
     cmd: 'mute', arg: '', bridge,
   })
   assert.match(replies[0], /仅支持群聊/)
+})
+
+test('commands：非 ops 文本不处理，群运营关闭时明确回复', async () => {
+  const replies = []
+  const bridge = {
+    config: { groupOpsEnabled: false },
+    safeReply: async (_m, text) => replies.push(text),
+    trace: { event: () => {} },
+  }
+  assert.equal(await handleOpsCommand({ message: { messageType: 'group' }, text: 'hello', bridge }), false)
+  assert.equal(await handleOpsCommand({ message: { messageType: 'group' }, text: '/群打卡', bridge }), true)
+  assert.match(replies[0], /群运营工具箱未启用/)
 })

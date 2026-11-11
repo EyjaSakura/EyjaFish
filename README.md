@@ -36,7 +36,7 @@ powershell -File D:\DSH\qqbot\scripts\health.ps1
 bridge.js          997 非空行
 bridge-facade.js   100% 覆盖
 bridge core        17 tests；57 / 83 / 10（CI 阈值）
-feature tests      26（14/14，覆盖 22.05/38.14/12.74）
+feature tests      27（14/14，覆盖 22.40/37.81/12.14）
 test:new           175
 ```
 
