@@ -1,6 +1,8 @@
 # Source-only monorepo: runtime data/logs/backups/secrets are never committed.
 /*
 !/.gitignore
+!/.gitattributes
+!/README.md
 !/plugins/
 /plugins/*
 !/plugins/dsh-qq-onebot-bridge/
