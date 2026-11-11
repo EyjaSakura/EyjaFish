@@ -259,6 +259,17 @@ test('bridge 核心：markSeen 写 qq-last-seen.json', () => {
   }
 })
 
+test('bridge 核心：turn/start 标记 bridge 会话回合开始', () => {
+  const { bridge } = fakeBridge()
+  const entry = { key: 'u:1', sessionId: 's1', pendingTurns: [], turnActive: false, currentTurnInjected: true }
+  bridge.agents = new Map([['qq-s1', entry]])
+  bridge.trace = { event: () => {} }
+  bridge.onSessionEvent({ id: 'qq-s1' }, { type: 'turn/start', data: { turn: 3 } })
+  assert.equal(entry.turnActive, true)
+  assert.equal(entry.currentTurnInjected, false)
+  assert.equal(entry.turnStartedAt > 0, true)
+})
+
 test('bridge 核心：/kick 确认取消与执行', async () => {
   const { bridge } = fakeBridge()
   const replies = []
