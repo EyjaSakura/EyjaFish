@@ -108,6 +108,23 @@ test('contacts：群成员查询成功返回结果', async () => {
   assert.deepEqual(result, { found: true, detail: 'group=2002 kind=list' })
 })
 
+test('contacts：群成员查询失败时返回原因', async () => {
+  const tools = []
+  registerQueryTools({
+    defineTool: (tool) => tool,
+    agentCtx: { tools: { register: (tool) => tools.push(tool) } },
+    route: { messageType: 'group', targetId: 2002 }, key: 'g:2002', role: 'guest',
+    bridge: {
+      config: { memberQueryEnabled: true, historyQueryEnabled: false },
+      queryGroupMembers: async () => ({ ok: false, reason: '权限不足' }),
+    },
+    debugLog: () => {},
+  })
+  const tool = tools.find((item) => item.name === 'qq_member_info')
+  const result = await tool.execute({ query: '2' })
+  assert.deepEqual(result, { found: false, detail: '没有查到：权限不足' })
+})
+
 test('contacts：dry-run 历史查询返回明确说明', async () => {
   const tools = []
   registerQueryTools({
