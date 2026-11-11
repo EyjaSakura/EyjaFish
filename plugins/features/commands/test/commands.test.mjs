@@ -5,6 +5,7 @@ import { hooks } from '../index.js'
 import { handleHelp } from '../help.js'
 import { handleAdminCommand } from '../admin.js'
 import { handleOpsCommand } from '../ops.js'
+import { handleEngageCommand } from '../engage.js'
 
 test('commands：hooks 暴露六个命令/工具入口', () => {
   assert.deepEqual(Object.keys(hooks).sort(), [
@@ -56,4 +57,17 @@ test('commands：非 ops 文本不处理，群运营关闭时明确回复', asyn
   assert.equal(await handleOpsCommand({ message: { messageType: 'group' }, text: 'hello', bridge }), false)
   assert.equal(await handleOpsCommand({ message: { messageType: 'group' }, text: '/群打卡', bridge }), true)
   assert.match(replies[0], /群运营工具箱未启用/)
+})
+
+test('commands：非互动命令忽略，赞榜未启用时说明原因', async () => {
+  const replies = []
+  const bridge = {
+    config: { engageEnabled: false, reactionStatsEnabled: false },
+    engageOn: () => false,
+    safeReply: async (_m, text) => replies.push(text),
+    trace: { event: () => {} },
+  }
+  assert.equal(await handleEngageCommand({ message: { messageType: 'group', groupId: 1 }, text: 'hello', bridge }), false)
+  assert.equal(await handleEngageCommand({ message: { messageType: 'group', groupId: 1 }, text: '/赞榜', bridge }), true)
+  assert.match(replies[0], /表情统计未启用/)
 })

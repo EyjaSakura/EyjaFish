@@ -12,7 +12,7 @@
 | private 字段 | `test/bridge-private-fields.test.mjs` | 所有 `this.#x` 必须有类内声明 |
 | 部署 smoke | `scripts/deploy-smoke.ps1` | 临时目录打包 → 改文件 → 回滚 → 断言恢复 |
 
-当前 `test:new` 共 **175 项**；bridge core **17 项**（`npm run test:bridge`）；feature 单测 **27 项**（`scripts/test-features.mjs --coverage`；覆盖率 22.40 / 37.81 / 12.14）。
+当前 `test:new` 共 **175 项**；bridge core **17 项**（`npm run test:bridge`）；feature 单测 **28 项**（`scripts/test-features.mjs --coverage`；覆盖率 22.73 / 37.98 / 12.50）。
 
 ## CI
 
