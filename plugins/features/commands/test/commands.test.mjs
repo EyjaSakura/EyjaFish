@@ -68,6 +68,23 @@ test('commands：群管命令在私聊直接拒绝', async () => {
   assert.match(replies[0], /仅支持群聊/)
 })
 
+test('commands：/clear 会 rotate + 清记忆并回复', async () => {
+  const calls = []
+  const bridge = {
+    routeKey: () => 'u:1',
+    rotate: async (message) => calls.push(['rotate', message.userId]),
+    clearMemory: (key) => calls.push(['clear', key]),
+    safeReply: async (_m, text) => calls.push(['reply', text]),
+  }
+  await handleAdminCommand({
+    message: { messageType: 'private', userId: 1 },
+    cmd: 'clear', arg: '', bridge,
+  })
+  assert.deepEqual(calls[0], ['rotate', 1])
+  assert.deepEqual(calls[1], ['clear', 'u:1'])
+  assert.match(calls[2][1], /已清空/)
+})
+
 test('commands：非 ops 文本不处理，群运营关闭时明确回复', async () => {
   const replies = []
   const bridge = {
