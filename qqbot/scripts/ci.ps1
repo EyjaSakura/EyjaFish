@@ -45,7 +45,7 @@ $code = $LASTEXITCODE
 Pop-Location
 if ($code -ne 0) { Write-Host 'TESTS FAILED'; exit 1 }
 Write-Host '== feature tests =='
-& node 'D:\DSH\qqbot\scripts\test-features.mjs'
+& node 'D:\DSH\qqbot\scripts\test-features.mjs' --coverage
 if ($LASTEXITCODE -ne 0) { Write-Host 'FEATURE TESTS FAILED'; exit 1 }
 Write-Host '== bridge coverage =='
 Push-Location $root

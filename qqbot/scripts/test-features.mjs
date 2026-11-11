@@ -22,8 +22,20 @@ if (files.length === 0) {
   process.exit(0)
 }
 
-console.log(`feature tests: ${files.length}`)
-const result = spawnSync(process.execPath, ['--test', ...files], {
+const coverage = process.argv.includes('--coverage')
+console.log(`feature tests: ${files.length}${coverage ? ' (coverage)' : ''}`)
+const args = ['--test']
+if (coverage) {
+  args.push(
+    '--experimental-test-coverage',
+    '--test-coverage-include=features/**',
+    '--test-coverage-lines=15',
+    '--test-coverage-branches=40',
+    '--test-coverage-functions=5',
+  )
+}
+args.push(...files)
+const result = spawnSync(process.execPath, args, {
   cwd: 'D:/DSH/plugins',
   stdio: 'inherit',
 })
