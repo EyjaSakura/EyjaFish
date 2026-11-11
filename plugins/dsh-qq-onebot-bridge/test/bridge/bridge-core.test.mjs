@@ -1,5 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 import { QQBridge } from '../../lib/bridge.js'
 
@@ -131,6 +134,26 @@ test('bridge 核心：空会话导出走 safeReply', async () => {
   bridge.safeReply = async (_m, text) => { reply = text }
   await bridge.handleExport({ messageType: 'private', userId: 1 })
   assert.match(reply, /没有可导出的记录/)
+})
+
+test('bridge 核心：有记录时导出文件并回复路径', async () => {
+  const { bridge } = fakeBridge()
+  const dir = mkdtempSync(join(tmpdir(), 'qq-export-'))
+  let reply = ''
+  try {
+    Object.assign(bridge, {
+      exportsDir: dir,
+      routeKey: () => 'u:1',
+      loadMemoryLines: () => ['a', 'b'],
+      safeReply: async (_m, text) => { reply = text },
+    })
+    await bridge.handleExport({ messageType: 'private', userId: 1 })
+    assert.match(reply, /已导出 2 条记录/)
+    const file = reply.split('：').pop()
+    assert.match(readFileSync(file, 'utf8'), /# u:1 聊天记录导出/)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
 })
 
 test('bridge 核心：无待审批验证时 join answer 直接返回 false', async () => {
