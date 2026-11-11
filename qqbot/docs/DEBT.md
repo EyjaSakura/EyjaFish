@@ -49,7 +49,7 @@
 
 ### 2d. feature 包没有本地单测
 
-- 现状：14 个 feature 包中，media / draw / pvz / ark 已有本地单测（8 项）；其余 10 个仍为 0
+- 现状：14 个 feature 包中，media / draw / pvz / ark / sing / usage 已有本地单测（10 项）；其余 8 个仍为 0
 - 已加：`scripts/test-features.mjs` + CI `feature tests` 步骤
 - 风险：其余 feature 的业务分支主要靠手测/线上暴露
 - 验收：每个 feature 至少一个可独立跑的单测；CI 覆盖全部 feature
