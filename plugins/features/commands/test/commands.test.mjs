@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 
 import { hooks } from '../index.js'
 import { handleHelp } from '../help.js'
+import { handleAdminCommand } from '../admin.js'
 
 test('commands：hooks 暴露六个命令/工具入口', () => {
   assert.deepEqual(Object.keys(hooks).sort(), [
@@ -32,4 +33,14 @@ test('commands：/help 对 owner 追加管理/工作区段', async () => {
   assert.match(seen[0], /小鲸鱼使用指南/)
   assert.match(seen[0], /工作区/)
   assert.match(seen[0], /管理：\/mute/)
+})
+
+test('commands：群管命令在私聊直接拒绝', async () => {
+  const replies = []
+  const bridge = { safeReply: async (_m, text) => replies.push(text) }
+  await handleAdminCommand({
+    message: { messageType: 'private', userId: 1 },
+    cmd: 'mute', arg: '', bridge,
+  })
+  assert.match(replies[0], /仅支持群聊/)
 })
