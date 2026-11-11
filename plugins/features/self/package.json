@@ -1,0 +1,16 @@
+{
+  "name": "@fish/feature-self",
+  "version": "1.0.0",
+  "description": "小鲸鱼自注册功能插件：抖音 / B站 / 表情包 / QZone / 游戏",
+  "type": "module",
+  "main": "index.js",
+  "dshFeature": {
+    "hooks": [
+      "registerSelfTools"
+    ],
+    "dataPaths": [
+      "D:\\DSH\\qqbot\\douyin",
+      "D:\\DSH\\qqbot\\data\\bili"
+    ]
+  }
+}

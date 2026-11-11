@@ -1,0 +1,63 @@
+{
+  "gateway": {
+    "language": 9998,
+    "music": 9999
+  },
+  "ranges": {
+    "language": [
+      10000,
+      10009
+    ],
+    "music": [
+      10010,
+      10019
+    ]
+  },
+  "backends": {
+    "chunjin_v2pro": {
+      "port": 10000,
+      "kind": "language",
+      "runtime": "cpu",
+      "config": "chunjin_v2pro_tts.yaml",
+      "profile": "chunjin_v2pro"
+    },
+    "chunjin_v4": {
+      "port": 10001,
+      "kind": "language",
+      "runtime": "gpu",
+      "config": "chunjin_v4_tts.yaml",
+      "gpu_config": "chunjin_v4_gpu.yaml",
+      "profile": "chunjin_v4"
+    },
+    "etlchi_v2pro": {
+      "port": 10002,
+      "kind": "language",
+      "runtime": "cpu",
+      "config": "etlchi_v2pro_tts.yaml",
+      "profile": "etlchi_v2pro"
+    },
+    "etlchi_v4": {
+      "port": 10003,
+      "kind": "language",
+      "runtime": "gpu",
+      "config": "etlchi_v4_tts.yaml",
+      "gpu_config": "etlchi_v4_gpu.yaml",
+      "profile": "etlchi_v4"
+    },
+    "benxi_svc": {
+      "port": 10010,
+      "kind": "music",
+      "runtime": "cpu",
+      "model_dir": "D:\\DSH\\sing\\models\\mogu_SVC_G2000",
+      "device": "cpu",
+      "cluster": 0.5,
+      "python": "D:\\DSH\\sing\\svc_env212\\Scripts\\python.exe",
+      "service": "D:\\DSH\\sing\\svc_server.py"
+    }
+  },
+  "notes": [
+    "一个「角色+版本」固定一个端口，新增模型顺延，不复用旧号",
+    "语言模型 10000-10009，音乐模型 10010-10019，各留末尾一个空位做实验",
+    "网关只绑 127.0.0.1：语言 9998、音乐 9999"
+  ]
+}

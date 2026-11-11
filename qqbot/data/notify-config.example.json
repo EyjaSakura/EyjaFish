@@ -1,0 +1,8 @@
+{
+  "provider": "ntfy",
+  "url": "https://ntfy.sh/REPLACE_WITH_RANDOM_TOPIC",
+  "token": "",
+  "sendKey": "",
+  "botToken": "",
+  "chatId": ""
+}

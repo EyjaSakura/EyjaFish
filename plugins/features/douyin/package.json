@@ -1,0 +1,15 @@
+{
+  "name": "@fish/feature-douyin",
+  "version": "1.0.0",
+  "description": "抖音私信/视频/分享工具",
+  "type": "module",
+  "main": "index.js",
+  "dshFeature": {
+    "hooks": [
+      "registerDouyinTools"
+    ],
+    "dataPaths": [
+      "D:\\\\DSH\\\\qqbot\\\\data\\\\douyin-tier.json"
+    ]
+  }
+}

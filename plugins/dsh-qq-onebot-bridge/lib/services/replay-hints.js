@@ -1,0 +1,33 @@
+// 离线回放需要的配置提示：只选影响分支的键，不含任何密钥。
+export function replayHints(config = {}) {
+  return {
+    botQq: config.botQq ?? 0,
+    allowGroups: config.allowGroups ?? [],
+    allowUsers: config.allowUsers ?? [],
+    adminUsers: config.adminUsers ?? [],
+    quietHours: config.quietHours ?? [],
+    quietHoursEnabled: config.quietHoursEnabled !== false,
+    replyOnlyWhenMentioned: config.replyOnlyWhenMentioned !== false,
+    acceptPrivate: config.acceptPrivate !== false,
+    sessionMode: config.sessionMode ?? 'chat',
+    dedupWindowSeconds: config.dedupWindowSeconds ?? 0,
+    keywordEnabled: config.keywordEnabled === true,
+    checkinEnabled: config.checkinEnabled === true,
+    checkinKeyword: config.checkinKeyword ?? '',
+    welcomeEnabled: config.welcomeEnabled === true,
+    pokeEnabled: config.pokeEnabled === true,
+    groupReadEnabled: config.groupReadEnabled !== false,
+    statsEnabled: config.statsEnabled === true,
+    pointsEnabled: config.pointsEnabled === true,
+    gameEnabled: config.gameEnabled === true,
+    fortuneEnabled: config.fortuneEnabled !== false,
+    diceEnabled: config.diceEnabled !== false,
+    filterEnabled: config.filterEnabled === true,
+    floodEnabled: config.floodEnabled === true,
+    antiRecallEnabled: config.antiRecallEnabled === true,
+    voiceReadingEnabled: config.voiceReadingEnabled === true,
+    maxMessageLength: config.maxMessageLength ?? 0,
+    memoryEnabled: config.memoryEnabled !== false,
+    filterAction: config.filterAction ?? '',
+  }
+}

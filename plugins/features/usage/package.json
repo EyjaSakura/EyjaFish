@@ -1,0 +1,15 @@
+{
+  "name": "@fish/feature-usage",
+  "version": "1.0.0",
+  "description": "小鲸鱼用量报表：按模型/角色统计 token 与费用",
+  "type": "module",
+  "main": "index.js",
+  "dshFeature": {
+    "hooks": [
+      "registerUsageTools"
+    ],
+    "dataPaths": [
+      "D:\\DSH\\qqbot\\data\\model-prices.json"
+    ]
+  }
+}

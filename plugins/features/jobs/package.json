@@ -1,0 +1,15 @@
+{
+  "name": "@fish/feature-jobs",
+  "version": "1.0.0",
+  "description": "小鲸鱼后台任务插件：抖音分析结果轮询",
+  "type": "module",
+  "main": "index.js",
+  "dshFeature": {
+    "hooks": [
+      "pollAnalyzeResults"
+    ],
+    "dataPaths": [
+      "D:\\DSH\\qqbot\\douyin\\dm-results.jsonl"
+    ]
+  }
+}

@@ -1,0 +1,28 @@
+# Source-only monorepo: runtime data/logs/backups/secrets are never committed.
+/*
+!/.gitignore
+!/plugins/
+/plugins/*
+!/plugins/dsh-qq-onebot-bridge/
+!/plugins/features/
+!/qqbot/
+/qqbot/*
+!/qqbot/scripts/
+!/qqbot/docs/
+!/qqbot/README.md
+!/qqbot/PORTS.md
+!/qqbot/data/
+/qqbot/data/*
+!/qqbot/data/*.example.json
+!/ports.json
+!/PORTS.md
+
+# Inside included trees
+**/node_modules/
+**/*.log
+**/*.bak*
+**/*.tmp
+**/.DS_Store
+/plugins/features/status.json
+/plugins/features/disabled.json
+/qqbot/scripts/*.bak*

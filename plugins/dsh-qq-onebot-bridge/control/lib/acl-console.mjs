@@ -1,0 +1,604 @@
+/**
+ * 权限控制台的 HTTP 面（本地、只绑 127.0.0.1、要 token）。
+ *
+ * 只做**权限管理**（2026-10-09 的需求：控制台不碰具体会话）：
+ *   角色增删改、角色 × 权限矩阵（allow + deny）、主体分配、主体级 deny、限额、审计查询、导出快照。
+ *
+ * 安全模型沿用同仓的 control/lib/server.mjs：只绑回环、每个 /api/* 都要 token、
+ * 带 Origin 的请求必须来自控制台页面本身（挡跨站）。
+ */
+import { createServer } from 'node:http'
+import { spawn } from 'node:child_process'
+import { randomBytes } from 'node:crypto'
+import { existsSync, readFileSync } from 'node:fs'
+import { isAbsolute, join } from 'node:path'
+import { canonicalRoleId, openAclStore } from '../../lib/acl-store.js'
+import { resolveCorpusDetailed } from '../../lib/corpus.js'
+import { PERMISSIONS, isKnownPermission } from '../../lib/permissions.js'
+import { CAPABILITIES, LIMITS } from '../../lib/capabilities.js'
+import { collectStatus, fetchQrImage, napcatWebUiUrl } from './status-page.mjs'
+import { COOKIE_NAME, createLoginThrottle, createSessionStore, openUserStore, parseCookies, sessionCookie } from './auth.mjs'
+import { readSystemPage, saveSystemConfig, serviceAction } from './system-page.mjs'
+import { installPlugin, keyFingerprint, listPlugins, pluginDetail, savePluginConfig, setPluginEnabled, sshTest, uninstallPlugin } from './plugin-manager.mjs'
+import { dshHome, isUnderAllowedRoot, profileName, restartScript } from './paths.mjs'
+import { readIdentity, saveIdentity } from './identity-page.mjs'
+import { probeGithubToken, readSystemConfig as readSystemSettings, saveSystemConfig as saveSystemSettings } from './system-config.mjs'
+
+const MAX_BODY = 256 * 1024
+
+export function createAclToken() {
+  return randomBytes(18).toString('base64url')
+}
+
+function json(res, status, payload) {
+  const body = JSON.stringify(payload)
+  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+  res.end(body)
+}
+
+function readBody(req) {
+  return new Promise((resolve) => {
+    let size = 0
+    const chunks = []
+    req.on('data', (chunk) => {
+      size += chunk.length
+      if (size > MAX_BODY) { req.destroy(); resolve(null); return }
+      chunks.push(chunk)
+    })
+    req.on('end', () => {
+      try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')) } catch { resolve(null) }
+    })
+    req.on('error', () => resolve(null))
+  })
+}
+
+/**
+ * 资源 → 实际判定点的对应表。资源表本身**不是**授权来源（授权永远是权限点，单一事实源），
+ * 但页面上必须能看出"这条资源到底接没接到判定上"，否则就是一张装饰表。
+ * 没在这张表里的资源 = 仅登记（管理员自己看的清单）。
+ */
+const WIRED_RESOURCES = {
+  'dir:shared': { perm: 'tool.fs.read:shared', note: '受限读工具的共享只读区（uri 相对数据根；改这里就是改实际挂载点）' },
+  'svc:ecs': { perm: 'tool.mcp.ecs', note: 'ECS 运维工具' },
+  'svc:n8n': { perm: 'tool.mcp.n8n', note: 'n8n 工具' },
+  'svc:gh': { perm: 'tool.mcp.gh', note: 'GitHub Actions 工具' },
+}
+
+/** 资源 uri 解析成绝对路径（相对路径按数据根解析；没有数据根就按原样判 exists）。 */
+function resolveResourcePath(uri, dataRoot) {
+  const raw = String(uri ?? '').trim()
+  if (raw === '') return ''
+  if (isAbsolute(raw)) return raw
+  return dataRoot === '' ? raw : join(dataRoot, raw)
+}
+
+/** 角色/权限快照（控制台首屏就这一份数据）。 */
+export function aclSnapshot(store, { dataRoot = '' } = {}) {
+  const policy = store.loadPolicy()
+  return {
+    file: store.file,
+    roles: policy.roles,
+    assignments: policy.assignments,
+    subjectDenies: policy.subjectDenies,
+    defaultRoleByKind: policy.defaultRoleByKind,
+    permissions: PERMISSIONS.map((item) => ({ id: item.id, domain: item.domain ?? String(item.id).split('.')[0], kind: item.kind, label: item.label, group: item.group })),
+    capabilities: CAPABILITIES.map((item) => ({ id: item.id, kind: item.kind, group: item.group, label: item.label, need: item.need ?? [], gate: item.gate ?? null, entry: item.entry ?? '' })),
+    limits: Object.fromEntries(Object.entries(LIMITS).map(([key, spec]) => [key, { direction: spec.direction, default: spec.default, label: spec.label }])),
+    // 资源带上"接没接到判定上"和"路径是否存在"，页面才不是一张装饰表
+    resources: Object.fromEntries(Object.entries(policy.resources ?? {}).map(([id, row]) => {
+      const wired = WIRED_RESOURCES[id] ?? null
+      const path = row.kind === 'dir' ? resolveResourcePath(row.uri, dataRoot) : ''
+      const grantedRoles = Object.entries(row.grants ?? {})
+        .filter(([roleId, actions]) => (actions ?? []).length > 0
+          && (wired === null || roleHasPermission(policy, roleId, wired.perm)))
+        .map(([roleId]) => roleId)
+      return [id, {
+        ...row,
+        wired: wired?.perm ?? '',
+        wiredNote: wired?.note ?? '',
+        path,
+        exists: path === '' ? null : existsSync(path),
+        grantedRoles,
+      }]
+    })),
+    corpora: policy.corpora ?? {},
+    corpusBindings: policy.corpusBindings ?? {},
+    // 生效快照：哪些会话是按哪套权限面建的（只读展示，D-12：控制台不碰会话）
+    sessions: store.listSessions(200),
+    audit: store.auditTail(50).map((row) => ({
+      at: Number(row.at), actor: row.actor, action: row.action, target: row.target,
+      before: safeJson(row.before_json), after: safeJson(row.after_json),
+    })),
+  }
+}
+
+/** 某个角色有没有某个权限点（按基础点比对，范围不限）。 */
+function roleHasPermission(policy, roleId, permissionId) {
+  const base = String(permissionId).split(':')[0]
+  return (policy?.roles?.[roleId]?.permissions ?? []).some((id) => String(id).split(':')[0] === base)
+}
+
+function safeJson(text) {
+  try { return text ? JSON.parse(text) : null } catch { return null }
+}
+
+/**
+ * 写操作。全部走 store 的写入口（带审计），非法权限点/角色一律拒绝。
+ * 返回 `{ ok, status, payload }`。
+ */
+export function applyAclAction(store, body, { actor = 'console' } = {}) {
+  const action = String(body?.action ?? '')
+  const list = (value) => (Array.isArray(value) ? value.map(String) : [])
+  const bad = (error) => ({ ok: false, status: 400, payload: { ok: false, error } })
+  try {
+    if (action === 'role-permissions') {
+      const role = String(body.role ?? '')
+      if (!store.loadPolicy().roles[role]) return bad(`角色不存在：${role}`)
+      const perms = list(body.permissions)
+      const unknown = perms.filter((id) => !isKnownPermission(id))
+      if (unknown.length > 0) return bad(`词表里没有这些权限点：${unknown.join(', ')}`)
+      return { ok: true, status: 200, payload: { ok: true, permissions: store.setRolePermissions(role, perms, { actor }) } }
+    }
+    if (action === 'role-denies') {
+      const role = String(body.role ?? '')
+      if (!store.loadPolicy().roles[role]) return bad(`角色不存在：${role}`)
+      const denies = list(body.denies)
+      const unknown = denies.filter((id) => !isKnownPermission(id))
+      if (unknown.length > 0) return bad(`词表里没有这些权限点：${unknown.join(', ')}`)
+      return { ok: true, status: 200, payload: { ok: true, denies: store.setRoleDenies(role, denies, { actor }) } }
+    }
+    if (action === 'subject-roles') {
+      const subject = String(body.subject ?? '').trim()
+      if (!/^(user|group):\S+$/.test(subject)) return bad('主体写法应为 user:<QQ号> 或 group:<群号>')
+      const policy = store.loadPolicy()
+      const known = new Set(Object.keys(policy.roles ?? {}))
+      const wanted = list(body.roles)
+      // 认不出的角色直接拒绝，而不是悄悄换算成 guest（那正是"勾了 gq 存成 guest"的来源）
+      const unknown = wanted.filter((id) => canonicalRoleId(id, known) === '')
+      if (unknown.length > 0) return bad(`角色不存在：${unknown.join(', ')}（可用：${[...known].join(', ')}）`)
+      return { ok: true, status: 200, payload: { ok: true, roles: store.setSubjectRoles(subject, wanted, { actor }) } }
+    }
+    if (action === 'subject-denies') {
+      const subject = String(body.subject ?? '').trim()
+      if (!/^(user|group):\S+$/.test(subject)) return bad('主体写法应为 user:<QQ号> 或 group:<群号>')
+      const denies = list(body.denies)
+      const unknown = denies.filter((id) => !isKnownPermission(id))
+      if (unknown.length > 0) return bad(`词表里没有这些权限点：${unknown.join(', ')}`)
+      return { ok: true, status: 200, payload: { ok: true, denies: store.setSubjectDenies(subject, denies, { actor }) } }
+    }
+    if (action === 'role-create') {
+      const id = String(body.id ?? '').trim()
+      if (!/^[a-z][a-z0-9_-]{1,30}$/.test(id)) return bad('角色 id 只能用小写字母/数字/下划线/短横线')
+      const policy = store.loadPolicy()
+      if (policy.roles[id]) return bad(`角色已存在：${id}`)
+      store.db.prepare('INSERT INTO roles(id, name, description, builtin, created_at, updated_at) VALUES (?, ?, ?, 0, ?, ?)')
+        .run(id, String(body.name ?? id), String(body.description ?? ''), Date.now(), Date.now())
+      const clone = body.cloneFrom ? policy.roles[String(body.cloneFrom)]?.permissions ?? [] : []
+      store.setRolePermissions(id, clone, { actor })
+      store.audit({ actor, action: 'role-create', target: id, after: { cloneFrom: body.cloneFrom ?? '' } })
+      return { ok: true, status: 200, payload: { ok: true, id, permissions: clone } }
+    }
+    if (action === 'role-delete') {
+      const id = String(body.id ?? '')
+      const builtin = store.db.prepare('SELECT builtin FROM roles WHERE id = ?').get(id)
+      if (!builtin) return bad(`角色不存在：${id}`)
+      if (Number(builtin.builtin) === 1) return bad('内置角色（admin / legacy / guest）不允许删除')
+      store.db.prepare('DELETE FROM roles WHERE id = ?').run(id)
+      store.db.prepare('DELETE FROM role_permissions WHERE role_id = ?').run(id)
+      store.db.prepare('DELETE FROM role_denies WHERE role_id = ?').run(id)
+      store.db.prepare('DELETE FROM subject_roles WHERE role_id = ?').run(id)
+      store.audit({ actor, action: 'role-delete', target: id })
+      return { ok: true, status: 200, payload: { ok: true } }
+    }
+    if (action === 'role-limits') {
+      const role = String(body.role ?? '')
+      if (!store.loadPolicy().roles[role]) return bad(`角色不存在：${role}`)
+      const limits = body.limits && typeof body.limits === 'object' ? body.limits : {}
+      store.db.prepare('DELETE FROM role_limits WHERE role_id = ?').run(role)
+      const ins = store.db.prepare('INSERT INTO role_limits(role_id, key, value) VALUES (?, ?, ?)')
+      for (const [key, value] of Object.entries(limits)) {
+        if (!LIMITS[key]) continue
+        ins.run(role, key, value === null || value === '' ? 'null' : String(Number(value)))
+      }
+      store.audit({ actor, action: 'set-role-limits', target: role, after: limits })
+      return { ok: true, status: 200, payload: { ok: true } }
+    }
+    if (action === 'resource-upsert') {
+      const id = String(body.id ?? '').trim()
+      if (!/^[a-zA-Z0-9][a-zA-Z0-9_.:/-]{0,80}$/.test(id)) return bad('资源 id 只能用字母/数字/._-:/，且不能为空')
+      const kind = ['dir', 'service', 'corpus', 'other'].includes(String(body.kind)) ? String(body.kind) : 'dir'
+      const row = store.upsertResource({ id, kind, uri: String(body.uri ?? ''), label: String(body.label ?? ''), note: String(body.note ?? '') }, { actor })
+      return { ok: true, status: 200, payload: { ok: true, resource: { id: row.id, kind: row.kind, uri: row.uri, label: row.label } } }
+    }
+    if (action === 'resource-delete') {
+      return { ok: true, status: 200, payload: { ok: true, deleted: store.deleteResource(String(body.id ?? ''), { actor }) } }
+    }
+    if (action === 'resource-grants') {
+      const role = String(body.role ?? '')
+      const policy = store.loadPolicy()
+      if (!policy.roles[role]) return bad(`角色不存在：${role}`)
+      const entries = Array.isArray(body.grants) ? body.grants : []
+      const unknown = entries.filter((entry) => !policy.resources?.[String(entry?.resourceId ?? '')])
+      if (unknown.length > 0) return bad(`资源不存在：${unknown.map((entry) => entry.resourceId).join(', ')}`)
+      return { ok: true, status: 200, payload: { ok: true, grants: store.setResourceGrants(role, entries, { actor }) } }
+    }
+    if (action === 'corpus-upsert') {
+      const row = store.upsertCorpus({
+        id: String(body.id ?? '').trim(),
+        name: String(body.name ?? ''),
+        kind: ['files', 'db', 'vector', 'remote'].includes(String(body.kind)) ? String(body.kind) : 'files',
+        description: String(body.description ?? ''),
+        payloadRef: String(body.payloadRef ?? ''),
+        version: Number(body.version) || 1,
+        enabled: body.enabled !== false,
+      }, { actor })
+      return { ok: true, status: 200, payload: { ok: true, corpus: { id: row.id, name: row.name, kind: row.kind, payloadRef: row.payload_ref, enabled: Number(row.enabled) !== 0 } } }
+    }
+    if (action === 'corpus-delete') {
+      return { ok: true, status: 200, payload: { ok: true, deleted: store.deleteCorpus(String(body.id ?? ''), { actor }) } }
+    }
+    if (action === 'corpus-bindings') {
+      const subject = String(body.subject ?? '').trim()
+      if (!/^(user|group):\S+$/.test(subject)) return bad('主体写法应为 user:<QQ号> 或 group:<群号>')
+      const policy = store.loadPolicy()
+      const ids = list(body.corpora)
+      const unknown = ids.filter((id) => !policy.corpora?.[id])
+      if (unknown.length > 0) return bad(`语料不存在：${unknown.join(', ')}`)
+      return { ok: true, status: 200, payload: { ok: true, corpora: store.setCorpusBindings(subject, ids, { actor }) } }
+    }
+    if (action === 'session-prune') {
+      const days = Math.max(0, Number(body.days) || 30)
+      const removed = store.pruneSessions(Date.now() - days * 24 * 3600 * 1000)
+      store.audit({ actor, action: 'session-prune', target: `${days}d`, after: { removed } })
+      return { ok: true, status: 200, payload: { ok: true, removed } }
+    }
+    return bad(`未知操作：${action || '(空)'}`)
+  } catch (error) {
+    return { ok: false, status: 500, payload: { ok: false, error: String(error?.message ?? error) } }
+  }
+}
+
+/**
+ * 起服务。`ui` 是页面 HTML 字符串；`store` 可注入（测试用临时库）。
+ * 返回 { server, port, url, token, close() }。
+ */
+
+const LOGIN_PAGE = `<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>控制台登录</title><style>
+  :root{color-scheme:dark}body{margin:0;font:14px/1.5 system-ui,-apple-system,"Noto Sans CJK SC",sans-serif;background:#0f1216;color:#e8ecf1;display:flex;align-items:center;justify-content:center;min-height:100vh}
+  .box{background:#171b21;border:1px solid #28303b;border-radius:12px;padding:26px 28px;width:min(360px,92vw)}
+  h1{font-size:16px;margin:0 0 4px}.muted{color:#8a94a3;font-size:12px;margin-bottom:16px}
+  label{display:block;font-size:12px;color:#8a94a3;margin:10px 0 4px}
+  input{width:100%;box-sizing:border-box;background:#0f1216;color:#e8ecf1;border:1px solid #28303b;border-radius:6px;padding:8px 10px}
+  button{margin-top:16px;width:100%;background:#3b82f6;color:#fff;border:0;border-radius:6px;padding:9px;cursor:pointer;font-size:14px}
+  .err{color:#f87171;font-size:12px;margin-top:10px;min-height:16px}
+</style></head><body><div class="box">
+  <h1 id="t">控制台登录</h1><div class="muted" id="sub">本机控制台，只绑 127.0.0.1</div>
+  <form id="f">
+    <label>用户名</label><input id="u" autocomplete="username" value="admin">
+    <label>密码</label><input id="p" type="password" autocomplete="current-password">
+    <button id="b">登录</button>
+  </form>
+  <div class="err" id="e"></div>
+  <div class="muted" style="margin-top:14px">首次使用会直接创建管理员账号；密码用 scrypt 哈希存本机文件。</div>
+</div><script>
+let setup = false;
+fetch('/api/session').then(r=>r.json()).then(d=>{ setup = d.setupRequired === true; if(setup){ t.textContent='首次使用：设置管理员密码'; sub.textContent='没有账号，先创建管理员'; b.textContent='创建并登录'; } }).catch(()=>{});
+f.onsubmit = async (ev) => {
+  ev.preventDefault(); e.textContent='';
+  const url = setup ? '/api/setup' : '/api/login';
+  const r = await fetch(url, { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ user: u.value.trim(), password: p.value }) });
+  const d = await r.json().catch(()=>({}));
+  if (d.ok) { location.href = new URLSearchParams(location.search).get('next') || '/status'; return; }
+  e.textContent = d.error || '登录失败'; if (d.setupRequired) location.reload();
+};
+</script></body></html>`
+
+export async function startAclConsole({ file, token = createAclToken(), ui = '', port = 0, host = '127.0.0.1', logger = console, corporaRoot = '', dataRoot = '' } = {}) {
+  // 语料根：显式给就用，否则按数据根推（<dataRoot>/config/corpora）
+  const corpusRoot = corporaRoot !== '' ? corporaRoot : (dataRoot === '' ? '' : join(dataRoot, 'config', 'corpora'))
+  const html = ui || (existsSync(new URL('../acl-ui.html', import.meta.url))
+    ? readFileSync(new URL('../acl-ui.html', import.meta.url), 'utf8')
+    : '<!doctype html><meta charset="utf-8"><h1>权限控制台</h1><p>缺少 control/acl-ui.html</p>')
+
+  // [阶段 0] 状态台页面（同一服务、同一 token；页面本身不需要 token，接口才要）
+  const statusHtml = existsSync(new URL('../status-ui.html', import.meta.url))
+    ? readFileSync(new URL('../status-ui.html', import.meta.url), 'utf8')
+    : '<!doctype html><meta charset="utf-8"><h1>QQ 机器人状态台</h1><p>缺少 control/status-ui.html</p>'
+
+  // [登录改造] 用户表 + 会话表 + 登录限速（控制台自己的状态，跟 DSH 无关）
+  const users = openUserStore(dataRoot || process.cwd())
+  const sessions = createSessionStore()
+  const throttle = createLoginThrottle()
+
+  const server = createServer(async (req, res) => {
+    const url = new URL(req.url ?? '/', `http://${host}`)
+    const origin = req.headers.origin ?? ''
+    if (origin && !/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(origin)) {
+      return json(res, 403, { ok: false, error: '跨站请求被拒绝' })
+    }
+    if (url.pathname === '/' || url.pathname === '/index.html') {
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' })
+      res.end(html)
+      return
+    }
+    if (url.pathname === '/plugins' || url.pathname === '/plugins.html') {
+      const pluginsHtml = existsSync(new URL('../plugins-ui.html', import.meta.url))
+        ? readFileSync(new URL('../plugins-ui.html', import.meta.url), 'utf8')
+        : '<!doctype html><meta charset="utf-8"><h1>插件与密钥</h1><p>缺少 control/plugins-ui.html</p>'
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' })
+      res.end(pluginsHtml)
+      return
+    }
+    if (url.pathname === '/identity' || url.pathname === '/identity.html') {
+      const identityHtml = existsSync(new URL('../identity-ui.html', import.meta.url))
+        ? readFileSync(new URL('../identity-ui.html', import.meta.url), 'utf8')
+        : '<!doctype html><meta charset="utf-8"><h1>机器人身份</h1><p>缺少 control/identity-ui.html</p>'
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' })
+      res.end(identityHtml)
+      return
+    }
+    if (url.pathname === '/system' || url.pathname === '/system.html') {
+      const systemHtml = existsSync(new URL('../system-ui.html', import.meta.url))
+        ? readFileSync(new URL('../system-ui.html', import.meta.url), 'utf8')
+        : '<!doctype html><meta charset="utf-8"><h1>系统配置</h1><p>缺少 control/system-ui.html</p>'
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' })
+      res.end(systemHtml)
+      return
+    }
+    if (url.pathname === '/setup' || url.pathname === '/setup.html') {
+      // 首次配置向导：密码 → 白名单 → 系统配置（可选）→ 扫码。安装脚本收尾会打印这个地址。
+      const setupHtml = existsSync(new URL('../setup-ui.html', import.meta.url))
+        ? readFileSync(new URL('../setup-ui.html', import.meta.url), 'utf8')
+        : '<!doctype html><meta charset="utf-8"><h1>首次配置向导</h1><p>缺少 control/setup-ui.html —— 去「机器人身份 / 系统配置」页手动配置即可。</p>'
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' })
+      res.end(setupHtml)
+      return
+    }
+    if (url.pathname === '/status' || url.pathname === '/status.html') {
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' })
+      res.end(statusHtml)
+      return
+    }
+    // ---- [登录改造] 登录页与登录/登出/会话接口（不需要已登录）----
+    if (url.pathname === '/console.css') {
+      const css = existsSync(new URL('../console.css', import.meta.url)) ? readFileSync(new URL('../console.css', import.meta.url), 'utf8') : ''
+      res.writeHead(200, { 'content-type': 'text/css; charset=utf-8', 'cache-control': 'no-store' })
+      return res.end(css)
+    }
+    if (url.pathname === '/login') {
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' })
+      return res.end(LOGIN_PAGE)
+    }
+    const remote = String(req.socket?.remoteAddress ?? '')
+    const isLocal = remote === '' || remote === '::1' || remote.startsWith('127.') || remote.startsWith('::ffff:127.')
+    const cookies = parseCookies(req.headers.cookie)
+    const sid = cookies[COOKIE_NAME] ?? ''
+    const session = sessions.get(sid)
+    if (req.method === 'GET' && url.pathname === '/api/session') {
+      return json(res, 200, {
+        ok: true,
+        setupRequired: !users.hasUsers(),
+        user: session?.user ?? null,
+        sudo: sessions.hasSudo(sid),
+        users: users.names(),
+      })
+    }
+    if (req.method === 'POST' && url.pathname === '/api/setup') {
+      if (!isLocal) return json(res, 403, { ok: false, error: '只允许本机请求' })
+      if (users.hasUsers()) return json(res, 400, { ok: false, error: '已经有账号了，请直接登录', setupRequired: false })
+      const body = (await readBody(req)) ?? {}
+      const result = users.setPassword(String(body.user ?? 'admin'), String(body.password ?? ''))
+      if (!result.ok) return json(res, 400, result)
+      const newSid = sessions.create(result.user)
+      res.setHeader('set-cookie', sessionCookie(newSid))
+      return json(res, 200, { ok: true, user: result.user })
+    }
+    if (req.method === 'POST' && url.pathname === '/api/login') {
+      if (!isLocal) return json(res, 403, { ok: false, error: '只允许本机请求' })
+      const limit = throttle.check(remote)
+      if (!limit.ok) return json(res, 429, { ok: false, error: `失败次数过多，请 ${limit.retryAfterSeconds} 秒后再试` })
+      const body = (await readBody(req)) ?? {}
+      const name = String(body.user ?? '').trim()
+      const okPassword = users.verify(name, String(body.password ?? ''))
+      if (!okPassword) {
+        throttle.fail(remote)
+        return json(res, 401, { ok: false, error: users.hasUsers() ? '用户名或密码不对' : '还没有账号，请先创建管理员', setupRequired: !users.hasUsers() })
+      }
+      throttle.ok(remote)
+      const newSid = sessions.create(name)
+      res.setHeader('set-cookie', sessionCookie(newSid))
+      return json(res, 200, { ok: true, user: name })
+    }
+    if (req.method === 'POST' && url.pathname === '/api/logout') {
+      sessions.destroy(sid)
+      res.setHeader('set-cookie', sessionCookie('', { clear: true }))
+      return json(res, 200, { ok: true })
+    }
+    if (req.method === 'POST' && url.pathname === '/api/reauth') {
+      if (!session) return json(res, 401, { ok: false, error: '先登录' })
+      const body = (await readBody(req)) ?? {}
+      if (!users.verify(session.user, String(body.password ?? ''))) {
+        throttle.fail(remote)
+        return json(res, 401, { ok: false, error: '密码不对' })
+      }
+      sessions.grantSudo(sid)
+      return json(res, 200, { ok: true, sudo: true, note: '5 分钟内可执行危险操作' })
+    }
+
+    // 会话鉴权（保留旧 token 作为测试后门：只有显式传对才认）
+    const legacyToken = String(url.searchParams.get('token') ?? req.headers['x-acl-token'] ?? '')
+    if (!session && legacyToken !== token) {
+      return json(res, 401, { ok: false, error: '未登录', setupRequired: !users.hasUsers() })
+    }
+
+    // ---- [阶段 0] 状态台 / 扫码接口（只读；重启宿主是唯一的写动作，且要 token）----
+    if (req.method === 'GET' && url.pathname === '/api/identity') {
+      return json(res, 200, readIdentity())
+    }
+    if (req.method === 'POST' && url.pathname === '/api/identity/save') {
+      // 白名单/角色 = 授权，属于危险改动：和"改系统参数"同级，要求 5 分钟内的 sudo 校验
+      if (!sessions.hasSudo(sid)) return json(res, 403, { ok: false, error: '改身份配置需要 sudo：先 POST /api/reauth 校验登录密码（5 分钟内有效）' })
+      const body = (await readBody(req)) ?? {}
+      const result = saveIdentity(body)
+      return json(res, result.ok ? 200 : 400, result)
+    }
+    if (req.method === 'GET' && url.pathname === '/api/plugins') {
+      return json(res, 200, await listPlugins({ dshHome, profile: profileName }))
+    }
+    if (req.method === 'GET' && url.pathname === '/api/plugins/detail') {
+      return json(res, 200, pluginDetail(String(url.searchParams.get('id') ?? '')))
+    }
+    if (req.method === 'POST' && url.pathname === '/api/plugins/config') {
+      const body = (await readBody(req)) ?? {}
+      const result = savePluginConfig({ id: String(body.id ?? ''), values: body.values ?? {} })
+      return json(res, result.ok ? 200 : 400, result)
+    }
+    if (req.method === 'POST' && url.pathname === '/api/plugins/toggle') {
+      const body = (await readBody(req)) ?? {}
+      const result = setPluginEnabled({ id: String(body.id ?? ''), enabled: body.enabled !== false })
+      return json(res, result.ok ? 200 : 400, result)
+    }
+    if (req.method === 'POST' && url.pathname === '/api/plugins/install') {
+      const body = (await readBody(req)) ?? {}
+      const result = installPlugin({ source: String(body.source ?? ''), enable: body.enable !== false })
+      return json(res, result.ok ? 200 : 400, result)
+    }
+    if (req.method === 'POST' && url.pathname === '/api/plugins/uninstall') {
+      const body = (await readBody(req)) ?? {}
+      const result = uninstallPlugin({ id: String(body.id ?? ''), removeLink: body.removeLink !== false })
+      return json(res, result.ok ? 200 : 400, result)
+    }
+    if (req.method === 'GET' && url.pathname === '/api/plugins/key-fingerprint') {
+      const keyPath = String(url.searchParams.get('path') ?? '')
+      if (!isUnderAllowedRoot(keyPath)) return json(res, 400, { ok: false, error: '私钥路径不在允许的根目录内（可用 QQ_ALLOWED_KEY_ROOTS 扩展）' })
+      return json(res, 200, await keyFingerprint(keyPath))
+    }
+    if (req.method === 'POST' && url.pathname === '/api/plugins/ssh-test') {
+      const body = (await readBody(req)) ?? {}
+      return json(res, 200, await sshTest({
+        host: String(body.host ?? ''), user: String(body.user ?? ''),
+        port: Number(body.port ?? 22) || 22, keyPath: String(body.keyPath ?? ''),
+      }))
+    }
+    // ---- [round5] 系统配置：gh 凭据 / git 身份 / DSH 工作区（容器启动时渲染生效）----
+    if (req.method === 'GET' && url.pathname === '/api/system/settings') {
+      return json(res, 200, readSystemSettings())
+    }
+    if (req.method === 'POST' && url.pathname === '/api/system/settings') {
+      if (!sessions.hasSudo(sid)) return json(res, 403, { ok: false, error: '改系统配置需要 sudo：先 POST /api/reauth 校验登录密码（5 分钟内有效）' })
+      const body = (await readBody(req)) ?? {}
+      const values = { ...body }
+      let probeWarning = ''
+      // 填了 token 却没填账号名：顺手问一下 GitHub 这是谁（问不到也不拦保存）
+      if (typeof values.githubToken === 'string' && values.githubToken.trim() !== '' && String(values.githubLogin ?? '').trim() === '') {
+        const probe = await probeGithubToken({ host: String(values.githubHost ?? 'github.com'), token: values.githubToken })
+        if (probe.ok && probe.login) values.githubLogin = probe.login
+        else if (!probe.ok) probeWarning = `token 没能校验通过（${probe.error}）—— 已按你填的保存，可用 gh auth status 复核`
+      }
+      const result = saveSystemSettings({ values, user: session?.user ?? '' })
+      if (probeWarning) result.warnings = [...(result.warnings ?? []), probeWarning]
+      return json(res, result.ok ? 200 : 400, result)
+    }
+    if (req.method === 'GET' && url.pathname === '/api/system') {
+      return json(res, 200, await readSystemPage())
+    }
+    if (req.method === 'POST' && url.pathname === '/api/system/config') {
+      if (!sessions.hasSudo(sid)) return json(res, 403, { ok: false, error: '要改系统参数先 sudo：POST /api/reauth 校验密码（5 分钟内有效）' })
+      const body = (await readBody(req)) ?? {}
+      const result = saveSystemConfig({ values: body.values ?? {} })
+      return json(res, result.ok ? 200 : 400, result)
+    }
+    if (req.method === 'POST' && url.pathname === '/api/system/service') {
+      if (!sessions.hasSudo(sid)) return json(res, 403, { ok: false, error: '服务控制需要 sudo：POST /api/reauth 校验密码（5 分钟内有效）' })
+      const body = (await readBody(req)) ?? {}
+      const result = await serviceAction({ id: String(body.id ?? ''), action: String(body.action ?? '') })
+      return json(res, result.ok ? 200 : 400, result)
+    }
+    if (req.method === 'GET' && url.pathname === '/api/status') {
+      return json(res, 200, await collectStatus({ dataRoot }))
+    }
+    if (req.method === 'GET' && url.pathname === '/api/napcat/qr') {
+      const qr = await fetchQrImage({ dataRoot })
+      return json(res, 200, qr.ok ? { ok: true, ageSeconds: qr.ageSeconds, bytes: qr.bytes } : qr)
+    }
+    if (req.method === 'GET' && url.pathname === '/api/napcat/qr.png') {
+      const qr = await fetchQrImage({ dataRoot })
+      if (!qr.ok) return json(res, 404, { ok: false, error: qr.reason })
+      res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'no-store' })
+      return res.end(readFileSync(qr.file))
+    }
+    if (req.method === 'GET' && url.pathname === '/api/napcat/webui') {
+      const target = napcatWebUiUrl({})
+      if (url.searchParams.get('format') === 'json') return json(res, 200, { ok: true, url: target })
+      res.writeHead(302, { location: target, 'cache-control': 'no-store' })
+      return res.end()
+    }
+    if (req.method === 'POST' && url.pathname === '/api/system/restart-host') {
+      const script = restartScript
+      if (!sessions.hasSudo(sid)) return json(res, 403, { ok: false, error: '危险操作需要 sudo：先 POST /api/reauth 校验密码（5 分钟有效）' })
+      if (!existsSync(script)) return json(res, 500, { ok: false, error: `找不到重启脚本：${script}` })
+      const body = (await readBody(req)) ?? {}
+      const delay = Math.max(0, Math.min(600, Number(body.delay ?? 15)))
+      try {
+        spawn('bash', [script, String(delay)], { detached: true, stdio: 'ignore' }).unref()
+      } catch (error) {
+        return json(res, 500, { ok: false, error: String(error?.message ?? error) })
+      }
+      return json(res, 200, { ok: true, delay, message: `${delay} 秒后重启宿主（重启前会重新探代理，决定走代理还是直连）` })
+    }
+
+    if (!existsSync(file)) return json(res, 500, { ok: false, error: `ACL 库不存在：${file}` })
+
+    const store = openAclStore(file, { create: false })
+    try {
+      if (req.method === 'GET' && url.pathname === '/api/acl') {
+        return json(res, 200, aclSnapshot(store, { dataRoot }))
+      }
+      if (req.method === 'GET' && url.pathname === '/api/acl/corpus-preview') {
+        const subject = String(url.searchParams.get('subject') ?? '').trim()
+        if (!/^(user|group):\S+$/.test(subject)) return json(res, 400, { ok: false, error: '要带 subject=user:<QQ号> 或 group:<群号>' })
+        const detail = resolveCorpusDetailed({ policy: store.loadPolicy(), subjectId: subject, root: corpusRoot })
+        return json(res, 200, {
+          ok: true,
+          subject,
+          bound: detail.bound,
+          items: detail.items.map((item) => ({ id: item.id, title: item.title, chars: item.text.length })),
+          text: detail.items.map((item) => `【${item.title}】\n${item.text.trim()}`).join('\n\n'),
+          skipped: detail.skipped,
+        })
+      }
+      if (req.method === 'GET' && url.pathname === '/api/acl/export') {
+        res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'content-disposition': 'attachment; filename="acl-export.json"' })
+        return res.end(JSON.stringify(store.exportJson(), null, 2))
+      }
+      if (req.method === 'POST' && url.pathname === '/api/acl') {
+        const body = await readBody(req)
+        if (body === null) return json(res, 400, { ok: false, error: '请求体不是合法 JSON（或超过 256KB）' })
+        const result = applyAclAction(store, body, { actor: `console:${req.socket.remoteAddress ?? ''}` })
+        return json(res, result.status, result.payload)
+      }
+      return json(res, 404, { ok: false, error: '没有这个接口' })
+    } catch (error) {
+      logger?.warn?.(`acl console error: ${error?.message ?? error}`)
+      return json(res, 500, { ok: false, error: String(error?.message ?? error) })
+    } finally {
+      store.close()
+    }
+  })
+
+  await new Promise((resolve, reject) => {
+    server.once('error', reject)
+    server.listen(port, host, resolve)
+  })
+  const actual = server.address().port
+  return {
+    server,
+    port: actual,
+    url: `http://${host}:${actual}/`,
+    token,
+    file,
+    close: () => new Promise((resolve) => server.close(resolve)),
+  }
+}

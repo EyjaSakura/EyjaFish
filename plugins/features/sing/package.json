@@ -1,0 +1,16 @@
+{
+  "name": "@fish/feature-sing",
+  "version": "1.0.0",
+  "description": "小鲸鱼唱歌功能插件：曲库点歌 / 歌词 / 段落 / 入库调度",
+  "type": "module",
+  "main": "index.js",
+  "dshFeature": {
+    "hooks": [
+      "registerSingTools"
+    ],
+    "dataPaths": [
+      "D:\\DSH\\sing\\library",
+      "D:\\DSH\\sing\\outputs"
+    ]
+  }
+}

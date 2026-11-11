@@ -1,0 +1,113 @@
+{
+  "name": "@zfqxuz/dsh-qq-onebot-bridge",
+  "version": "0.8.0",
+  "description": "QQ ↔ DeepSeek Harness agent bridge over OneBot v11 (reverse WebSocket)：把 QQ 群/私聊接到 DSH agent，自带权限（RBAC）、可视化控制台与可回放调试",
+  "type": "module",
+  "main": "lib/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zfqxuz/dsh-qq-onebot-bridge.git"
+  },
+  "homepage": "https://github.com/zfqxuz/dsh-qq-onebot-bridge#readme",
+  "bugs": {
+    "url": "https://github.com/zfqxuz/dsh-qq-onebot-bridge/issues"
+  },
+  "bin": {
+    "qq-control": "./control/bin/qq-control.mjs"
+  },
+  "scripts": {
+    "control": "node control/bin/qq-control.mjs",
+    "test": "node test/control-unit.mjs",
+    "test:session": "node test/workspace-unit.mjs && node test/session-ownership-unit.mjs && node test/retention-unit.mjs && node test/persona-unit.mjs && node test/group-role-unit.mjs && node test/acl-unit.mjs && node test/paths-unit.mjs && node test/subject-isolation-unit.mjs && node test/acl-gates-unit.mjs && node test/tool-surface-unit.mjs && node test/acl-store-unit.mjs && node test/acl-console-unit.mjs && node test/acl-enforcement-unit.mjs && node test/corpus-unit.mjs && node test/system-config-unit.mjs && node test/dsh-port-unit.mjs && node test/qr-source-unit.mjs && node test/proxy-state-unit.mjs && node test/privacy-unit.mjs",
+    "test:persona": "node test/persona-unit.mjs",
+    "test:group-role": "node test/group-role-unit.mjs",
+    "test:acl": "node test/acl-unit.mjs && node test/acl-store-unit.mjs && node test/acl-console-unit.mjs && node test/acl-gates-unit.mjs && node test/acl-enforcement-unit.mjs && node test/corpus-unit.mjs",
+    "test:paths": "node test/paths-unit.mjs",
+    "test:isolation": "node test/subject-isolation-unit.mjs",
+    "test:gates": "node test/acl-gates-unit.mjs",
+    "test:tools": "node test/tool-surface-unit.mjs",
+    "test:store": "node test/acl-store-unit.mjs",
+    "acl": "node control/bin/qq-acl.mjs",
+    "test:console": "node test/acl-console-unit.mjs",
+    "acl:ui": "node control/bin/qq-acl-console.mjs",
+    "test:enforce": "node test/acl-enforcement-unit.mjs",
+    "test:corpus": "node test/corpus-unit.mjs",
+    "seed": "node control/bin/qq-seed.mjs",
+    "test:identity": "node test/identity-seed-unit.mjs",
+    "test:system-config": "node test/system-config-unit.mjs",
+    "test:dsh-port": "node test/dsh-port-unit.mjs",
+    "test:proxy-state": "node test/proxy-state-unit.mjs",
+    "privacy": "node test/privacy-unit.mjs",
+    "verify": "node test/control-unit.mjs && node test/privacy-unit.mjs",
+    "prepublishOnly": "npm run verify",
+    "test:new": "node --test test/persona.test.mjs test/douyin-prompt.test.mjs test/imagegen.test.mjs test/onebot.test.mjs test/feature-loader.test.mjs test/qzone.test.mjs test/audit.test.mjs test/routing.test.mjs test/reply-router.test.mjs test/session-registry.test.mjs test/feature-flags.test.mjs test/inject-guard.test.mjs test/deferred-inject-queue.test.mjs test/replay-hints.test.mjs test/allow-policy.test.mjs test/inject-handler.test.mjs test/inject-window.test.mjs test/message-pipeline.test.mjs test/self-feature.test.mjs test/onebot-server.test.mjs test/qq-card.test.mjs test/session-install.test.mjs test/reply-router-e2e.test.mjs test/tool-grants.test.mjs test/qzone-client.test.mjs test/session-turns.test.mjs test/cache.test.mjs test/bridge-size.test.mjs test/bridge-typecheck.test.mjs test/bridge-services.test.mjs test/bridge-runtime.test.mjs test/bridge-private-fields.test.mjs test/bridge-api-contract.test.mjs test/store-stats.test.mjs test/trace-archive.test.mjs test/ops-dispatch.test.mjs test/private-file.test.mjs test/bridge-facade.test.mjs",
+    "test:bridge": "node --experimental-loader ./test/host-loader.mjs --test --experimental-test-coverage --test-coverage-include=lib/bridge.js --test-coverage-lines=57 --test-coverage-branches=83 --test-coverage-functions=10 test/bridge/bridge-core.test.mjs",
+    "test:all": "npm run test:new && npm run test:bridge && npm run test:session",
+    "test:coverage": "node --test --experimental-test-coverage --test-coverage-include=lib/core/** --test-coverage-include=lib/services/** --test-coverage-lines=97 --test-coverage-branches=82 --test-coverage-functions=79 \"test/*.test.mjs\"",
+    "test:coverage:all": "node --test --experimental-test-coverage --test-coverage-include=lib/** --test-coverage-exclude=lib/bridge.js --test-coverage-lines=80 --test-coverage-branches=73 --test-coverage-functions=70 \"test/*.test.mjs\""
+  },
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./client/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json",
+    "./lib/*": "./lib/*"
+  },
+  "files": [
+    "lib",
+    "client",
+    "control",
+    "test",
+    "cordis.patch.yml",
+    "README.md",
+    "README.en.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "cordis",
+    "qq",
+    "onebot",
+    "onebot-v11",
+    "napcat",
+    "bridge",
+    "speech-to-text",
+    "asr",
+    "debuggable",
+    "tracing",
+    "replay",
+    "observability",
+    "control-console"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "supportedRuntimeLines": [
+      "0.1",
+      "0.2"
+    ]
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-agent": "^0.1.0-rc.6 || ^0.1.1-rc.2 || ^0.1.2-rc.1 || ^0.1.5-rc.1 || ^0.2.0-rc.2",
+    "@deepseek-ai/dsh-agent-default-model": "^0.1.0-rc.6 || ^0.1.1-rc.2 || ^0.1.2-rc.1 || ^0.1.5-rc.1 || ^0.2.0-rc.2",
+    "@deepseek-ai/dsh-llm": "^0.1.0-rc.6 || ^0.1.1-rc.2 || ^0.1.2-rc.1 || ^0.1.5-rc.1 || ^0.2.0-rc.2",
+    "@deepseek-ai/dsh-session": "^0.1.0-rc.6 || ^0.1.1-rc.2 || ^0.1.2-rc.1 || ^0.1.5-rc.1 || ^0.2.0-rc.2",
+    "@deepseek-ai/dsh-system-prompt": "^0.1.0-rc.6 || ^0.1.1-rc.2 || ^0.1.2-rc.1 || ^0.1.5-rc.1 || ^0.2.0-rc.2",
+    "@deepseek-ai/dsh-tools": "^0.1.0-rc.6 || ^0.1.1-rc.2 || ^0.1.2-rc.1 || ^0.1.5-rc.1 || ^0.2.0-rc.2",
+    "@deepseek-ai/schemastery": "^3.18.1"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

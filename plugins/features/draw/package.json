@@ -1,0 +1,16 @@
+{
+  "name": "@fish/feature-draw",
+  "version": "1.0.0",
+  "description": "小鲸鱼生图：qq_draw 工具，调用多 provider 生图并直接发到会话",
+  "type": "module",
+  "main": "index.js",
+  "dshFeature": {
+    "hooks": [
+      "registerFeature"
+    ],
+    "dataPaths": [
+      "D:\\DSH\\qqbot\\data\\imagegen.json",
+      "D:\\DSH\\qqbot\\data\\image-usage.jsonl"
+    ]
+  }
+}

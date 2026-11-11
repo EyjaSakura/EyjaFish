@@ -1,0 +1,19 @@
+{
+  "name": "@fish/feature-events",
+  "version": "1.0.0",
+  "description": "小鲸鱼事件功能插件：文件 / 视频 / 群文件 / 通知",
+  "type": "module",
+  "main": "index.js",
+  "dshFeature": {
+    "hooks": [
+      "handlePrivateFiles",
+      "handleIncomingVideo",
+      "handleGroupFiles",
+      "onNotice"
+    ],
+    "dataPaths": [
+      "D:\\DSH\\qqbot\\douyin\\videos",
+      "D:\\DSH\\qqbot\\data\\files"
+    ]
+  }
+}

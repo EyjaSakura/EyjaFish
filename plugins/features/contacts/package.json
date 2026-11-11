@@ -1,0 +1,18 @@
+{
+  "name": "@fish/feature-contacts",
+  "version": "1.0.0",
+  "description": "小鲸鱼联系人功能插件：身份 / 主人摘要 / 群成员与历史查询",
+  "type": "module",
+  "main": "index.js",
+  "dshFeature": {
+    "hooks": [
+      "registerIdentityTools",
+      "registerOwnerTools",
+      "registerQueryTools"
+    ],
+    "dataPaths": [
+      "D:\\DSH\\qqbot\\data\\identity",
+      "D:\\DSH\\qqbot\\data\\contacts"
+    ]
+  }
+}

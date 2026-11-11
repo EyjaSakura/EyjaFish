@@ -1,0 +1,18 @@
+{
+  "name": "@fish/feature-commands",
+  "version": "1.0.0",
+  "description": "小鲸鱼命令功能插件：运维 / 互动 / 帮助 / 管理",
+  "type": "module",
+  "main": "index.js",
+  "dshFeature": {
+    "hooks": [
+      "handleOpsCommand",
+      "handleEngageCommand",
+      "handleHelp",
+      "handleAdminCommand",
+      "registerReminderTools",
+      "registerWorklogTools"
+    ],
+    "dataPaths": []
+  }
+}

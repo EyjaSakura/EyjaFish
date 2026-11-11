@@ -1,0 +1,13 @@
+{
+  "name": "@fish/feature-pvz",
+  "version": "1.0.0",
+  "description": "植物大战僵尸工具",
+  "type": "module",
+  "main": "index.js",
+  "dshFeature": {
+    "hooks": [
+      "registerPvzTools"
+    ],
+    "dataPaths": []
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "@fish/feature-media",
+  "version": "1.0.0",
+  "description": "小鲸鱼媒体功能插件：发图 / 发文件 / TTS 语音 / 撤回",
+  "type": "module",
+  "main": "index.js",
+  "dshFeature": {
+    "hooks": [
+      "registerMediaTools"
+    ],
+    "dataPaths": []
+  }
+}

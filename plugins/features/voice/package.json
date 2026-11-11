@@ -1,0 +1,16 @@
+{
+  "name": "@fish/feature-voice",
+  "version": "1.0.0",
+  "description": "小鲸鱼语音功能插件：朗读 / TTS / 合成 / 语音消息",
+  "type": "module",
+  "main": "index.js",
+  "dshFeature": {
+    "hooks": [
+      "handleVoiceReading",
+      "sendTts",
+      "synthVoiceFile",
+      "handleVoice"
+    ],
+    "dataPaths": []
+  }
+}

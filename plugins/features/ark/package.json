@@ -1,0 +1,16 @@
+{
+  "name": "@fish/feature-ark",
+  "version": "1.0.0",
+  "description": "明日方舟 MAA 工具",
+  "type": "module",
+  "main": "index.js",
+  "dshFeature": {
+    "hooks": [
+      "registerArkTools"
+    ],
+    "dataPaths": [
+      "D:\\DSH\\qqbot\\maa\\data",
+      "D:\\DSH\\qqbot\\maa\\queue"
+    ]
+  }
+}
