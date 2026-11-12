@@ -1,6 +1,6 @@
-// feature-memory stage 0 adapter.
-// Owns modes, status.json, notifications, and the host seam. It does NOT own
-// SQLite or extraction; those stay behind memory-core in stage 1.
+// feature-memory stage 1 adapter.
+// Owns modes, status.json, notifications, and the host seam. SQLite/extraction
+// stay behind memory-core; this file only calls its public API.
 import { DEFAULT_STATUS_FILE, normalizeMode, readStatus, today, writeStatus } from './status.js'
 import { notifyOwner as realNotifyOwner } from './notify.js'
 
@@ -24,6 +24,22 @@ export function createMemoryAdapter({
   env = process.env,
   debugLog = () => {},
 } = {}) {
+  let db = null
+  let coreModule = null
+
+  async function core() {
+    if (coreModule) return coreModule
+    coreModule = await loadCore()
+    return coreModule
+  }
+
+  function openDb(mod) {
+    if (db) return db
+    if (typeof mod?.openStore !== 'function') return null
+    db = mod.openStore(mod.DEFAULT_DB)
+    return db
+  }
+
   function currentStatus() {
     const status = readStatus(statusFile)
     // An explicit env override applies only when there is no status file yet;
@@ -69,7 +85,7 @@ export function createMemoryAdapter({
     const status = currentStatus()
     if (status.mode !== 'degraded') return status
     try {
-      await loadCore()
+      await core()
     } catch {
       return status
     }
@@ -81,8 +97,8 @@ export function createMemoryAdapter({
     return status
   }
 
-  /** @param {{ bridge?: any, fallbackText?: string }} args */
-  async function recall({ bridge, fallbackText = '' } = {}) {
+  /** @param {{ bridge?: any, fallbackText?: string, key?: string, message?: any }} args */
+  async function recall({ bridge, fallbackText = '', key = '', message = null } = {}) {
     let status = currentStatus()
     if (status.mode === 'off') {
       return { mode: 'off', inject: false, text: '', source: 'off' }
@@ -94,21 +110,33 @@ export function createMemoryAdapter({
         return { mode: 'degraded', inject: false, text: fallbackText, source: 'fallback:recent' }
       }
     }
+    let mod
     try {
-      await loadCore()
+      mod = await core()
     } catch (error) {
       status = await degrade(error?.message ?? String(error), bridge)
       return { mode: 'degraded', inject: false, text: fallbackText, source: 'fallback:recent' }
     }
     const mode = normalizeMode(status.mode, initialMode())
-    // Stage 0 intentionally does not inject the new path yet. The host keeps
-    // the legacy block; this call only proves the seam and records the mode.
+    let text = fallbackText
+    try {
+      const handle = openDb(mod)
+      if (handle && typeof mod.recallText === 'function') {
+        const query = String(message?.text ?? message?.raw_message ?? '')
+        const recalled = mod.recallText(handle, { subject: key, query, limit: 8 })
+        if (typeof recalled === 'string' && recalled !== '') text = recalled
+      }
+    } catch (error) {
+      status = await degrade(error?.message ?? String(error), bridge)
+      return { mode: 'degraded', inject: false, text: fallbackText, source: 'fallback:recent' }
+    }
+    // Stage 1: shadow compares the candidate block but never injects it.
     return {
       mode,
       inject: false,
-      text: fallbackText,
-      source: mode === 'on' ? 'stage0-on-not-ready' : 'stage0-shadow',
-      stage: 0,
+      text,
+      source: text === fallbackText ? 'stage1-shadow-empty' : 'stage1-shadow',
+      stage: Number(mod?.STAGE) || 1,
     }
   }
 
@@ -117,8 +145,24 @@ export function createMemoryAdapter({
     if (status.mode === 'off' || status.mode === 'degraded') {
       return { accepted: false, mode: status.mode, source: 'off-or-degraded' }
     }
-    // Stage 1 will enqueue here. Stage 0 only proves the host seam.
-    return { accepted: false, mode: status.mode, source: 'stage0-noop', windowId: payload.windowId ?? '' }
+    let mod
+    try {
+      mod = await core()
+    } catch (error) {
+      await degrade(error?.message ?? String(error), payload.bridge)
+      return { accepted: false, mode: 'degraded', source: 'fallback' }
+    }
+    try {
+      const handle = openDb(mod)
+      if (!handle || typeof mod.ingestTurn !== 'function') {
+        return { accepted: false, mode: status.mode, source: 'stage0-noop', windowId: payload.windowId ?? '' }
+      }
+      const result = mod.ingestTurn(handle, payload)
+      return { ...result, mode: status.mode, source: 'stage1' }
+    } catch (error) {
+      await degrade(error?.message ?? String(error), payload.bridge)
+      return { accepted: false, mode: 'degraded', source: 'fallback', error: String(error?.message ?? error) }
+    }
   }
 
   async function health() {

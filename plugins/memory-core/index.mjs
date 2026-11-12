@@ -1,8 +1,13 @@
-// memory-core stage 0 — pure library, no DSH / bridge / QQ dependencies.
-// Stage 0 only exposes the environment probe and version marker. SQLite,
-// extraction and recall move in during stage 1 behind this same module.
-export const VERSION = '0.1.0-stage0'
-export const STAGE = 0
+// memory-core stage 1 — pure library, no DSH / bridge / QQ dependencies.
+// SQLite store, migration, ingest and the minimal recall surface live here.
+export const VERSION = '0.2.0-stage1'
+export const STAGE = 1
+export { DEFAULT_DB, openStore, closeStore, addNode, addWindowTurn, setDecision, enqueue, searchCandidates, listPending, confirmNode, count, SCHEMA_VERSION } from './store.mjs'
+export { buildTokens, hasIcu } from './tokenize.mjs'
+export { extractEntities, extractStageOneNodes, isSubstantive } from './extract.mjs'
+export { ingestTurn } from './ingest.mjs'
+export { recallText } from './recall.mjs'
+export { migrateLegacy } from './migrate.mjs'
 
 export function envprobe({ checkSqlite = false, requireFn = null } = {}) {
   const result = {
@@ -16,7 +21,6 @@ export function envprobe({ checkSqlite = false, requireFn = null } = {}) {
     reason: '',
   }
   try {
-    // Intl.Segmenter is part of full-icu; stage 0 uses it only to report.
     new Intl.Segmenter('zh', { granularity: 'word' })
     result.icu = 'ok'
   } catch (error) {

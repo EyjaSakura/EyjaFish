@@ -6,6 +6,7 @@ import { join } from 'node:path'
 
 import { createMemoryAdapter } from '../adapter.js'
 import { writeStatus } from '../status.js'
+import * as core from '../../../memory-core/index.mjs'
 
 function tempStatus(mode = 'shadow') {
   const dir = mkdtempSync(join(tmpdir(), 'qq-memory-status-'))
@@ -90,6 +91,35 @@ test('memory adapter：degraded 恢复回 shadow 并通知', async () => {
     const status = JSON.parse(readFileSync(file, 'utf8'))
     assert.equal(status.mode, 'shadow')
   } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('memory adapter：stage1 ingest 写 SQLite，shadow 仍不注入', async () => {
+  const { dir, file } = tempStatus('shadow')
+  const db = core.openStore(':memory:')
+  try {
+    const adapter = createMemoryAdapter({
+      statusFile: file,
+      loadCore: async () => ({
+        ...core,
+        DEFAULT_DB: ':memory:',
+        openStore: () => db,
+      }),
+      notify: async () => {},
+    })
+    const result = await adapter.ingest({
+      subject: 'u:1', windowId: 'w1', traceId: 't1',
+      turns: [{ index: 1, role: 'user', text: '记住我喜欢吃白饭', ts: 100 }],
+    })
+    assert.equal(result.accepted, true)
+    assert.equal(core.count(db, 'nodes'), 1)
+    assert.equal(core.count(db, 'window_turns'), 1)
+    const recall = await adapter.recall({ bridge: {}, key: 'u:1', fallbackText: 'OLD', message: { text: '白饭' } })
+    assert.equal(recall.inject, false)
+    assert.match(recall.text, /白饭/)
+  } finally {
+    core.closeStore(db)
     rmSync(dir, { recursive: true, force: true })
   }
 })
