@@ -6,7 +6,7 @@ export async function callMemoryRecall({ bridge, context, timeoutMs = 200, debug
   if (!bridge || typeof bridge.dispatchFeature !== 'function') return null
   let timer
   try {
-    const pending = Promise.resolve(bridge.dispatchFeature('memoryRecall', context))
+    const pending = Promise.resolve(bridge.dispatchFeature('memoryRecall', { ...context, bridge }))
     const timeout = new Promise((resolve) => {
       timer = setTimeout(() => resolve(null), Math.max(20, Number(timeoutMs) || 200))
     })
@@ -26,7 +26,7 @@ export async function callMemoryRecall({ bridge, context, timeoutMs = 200, debug
 export function callMemoryIngest({ bridge, context, debugLog = () => {} } = {}) {
   if (!bridge || typeof bridge.dispatchFeature !== 'function') return
   try {
-    Promise.resolve(bridge.dispatchFeature('memoryIngest', context)).catch((error) => {
+    Promise.resolve(bridge.dispatchFeature('memoryIngest', { ...context, bridge })).catch((error) => {
       debugLog(`[memory] ingest failed: ${error?.message ?? error}`)
     })
   } catch (error) {
