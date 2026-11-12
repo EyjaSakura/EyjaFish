@@ -1,4 +1,4 @@
-# start-stack.ps1 — 启动 QQ bot 全栈（WSL NapCat + dsh web + 面板 + 抖音 watcher），幂等。
+﻿# start-stack.ps1 — 启动 QQ bot 全栈（WSL NapCat + dsh web + 面板 + 抖音 watcher），幂等。
 # 用法：
 #   powershell -ExecutionPolicy Bypass -File D:\DSH\qqbot\start-stack.ps1
 #   powershell -ExecutionPolicy Bypass -File D:\DSH\qqbot\start-stack.ps1 -NoBrowser
