@@ -37,8 +37,8 @@ export function rankCandidates(db, { subject, query = '', limit = 8, now = Date.
     const imp = Number(row.importance) || 0.5
     return {
       ...row,
-      rel: Number((0.7 * rel + 0.3 * entity).toFixed(4)),
-      score: Number((0.6 * rel + 0.3 * rec + 0.1 * imp + 0.3 * entity).toFixed(4)),
+      rel: Number((0.5 * rel + 0.5 * entity).toFixed(4)),
+      score: Number((0.6 * (0.5 * rel + 0.5 * entity) + 0.3 * rec + 0.1 * imp).toFixed(4)),
     }
   })
   ranked.sort((a, b) => b.score - a.score)

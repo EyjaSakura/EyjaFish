@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import {
   openStore, closeStore, addNode, addWindowTurn, setDecision, count,
   searchCandidates, listPending, confirmNode, ingestTurn, migrateLegacy, buildTokens, rankCandidates,
+  validateExtraction, extractWithLLM,
 } from '../../memory-core/index.mjs'
 
 function memoryDb() {
@@ -126,6 +127,29 @@ test('memory-core：pending 事实可确认/拒绝', () => {
   } finally {
     closeStore(db)
   }
+})
+
+test('memory-core：LLM 抽取校验拒绝 assistant/external_web fact，身份进 pending', () => {
+  const nodes = validateExtraction([
+    { type: 'fact', source: 'assistant', description: '她自己编的事实' },
+    { type: 'fact', source: 'external_web', description: '网页事实' },
+    { type: 'fact', source: 'user_message', description: '主人是管理员', turn_index: 1 },
+    { type: 'event', source: 'user_message', description: '今天去了沙面岛', turn_index: 1 },
+  ], { subject: 'u:1', windowId: 'w1', traceId: 't1', turns: [{ index: 1, role: 'user', text: '主人是管理员，今天去了沙面岛' }] })
+  assert.equal(nodes.length, 2)
+  assert.equal(nodes[0].status, 'pending')
+  assert.equal(nodes[0].owner_confirmed, 0)
+  assert.equal(nodes[1].type, 'event')
+})
+
+test('memory-core：LLM 接口失败回退确定性抽取，不抛', async () => {
+  const result = await extractWithLLM({
+    callModel: async () => { throw new Error('model unavailable') },
+    subject: 'u:1', windowId: 'w1', traceId: 't2',
+    turns: [{ index: 1, role: 'user', text: '记住我喜欢吃白饭', ts: 1 }],
+  })
+  assert.equal(result.source, 'fallback')
+  assert.ok(result.nodes.length >= 1)
 })
 
 test('memory-core：迁移 facts.json 并保留 pending 语义', () => {

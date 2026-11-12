@@ -86,9 +86,11 @@
 - 数据迁移：facts 21 + events 373 → 394 nodes；备份在 `backups\memory-v2-before-stage1-20261112-174908`
 - 写入：window_turns 幂等、队列、turn_decisions、FTS5 双索引、实体索引、pending/confirm、低风险 supersede
 - 排序：BM25+实体+recency+importance，shadow 候选注入=false；memory_search/timeline 接新库
-- 抽取：确定性 event + 显式 fact（记住/喜欢/讨厌/答应/端口），LLM 抽取未接
+- 抽取：确定性 event + 显式 fact（记住/喜欢/讨厌/答应/端口）；`llm-extract.mjs` 接口/校验/回退已备，未启用模型调用
+- 观测：`bin/shadow-report.mjs` 生成日报（模式/节点/窗口/队列/dead/pending/recall 统计）
+- 探针：`probes.mjs` 覆盖单字、BM25 方向、实体、幂等、pending、空值
 - 默认 `MEMORY_MODE=shadow`：stage2 recall 只记录候选，`inject=false`，不改变回复
-- 验证：`test:new` 202、feature 71、CI OK、health HEALTH OK
+- 验证：`test:new` 204、feature 71、CI OK、health HEALTH OK
 - 待办：LLM 抽取评分、narrative/离线巩固、on 模式（stage 2.5/3）
 
 ## P2
@@ -129,7 +131,7 @@
 
 ### 5. functions 覆盖仍低于 lines
 
-- 现状：all-lib 85.00 / 75.01 / 72.53（lines / branches / functions）
+- 现状：all-lib 85.00 / 75.00 / 72.53（lines / branches / functions）
 - 风险：默认回调、错误分支可能没测
 - 验收：functions ≥ 75%，branches ≥ 80%（分批提升，不一次拉满）
 

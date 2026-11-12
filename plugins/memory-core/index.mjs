@@ -9,6 +9,7 @@ export { ingestTurn } from './ingest.mjs'
 export { recallText } from './recall.mjs'
 export { rankCandidates, touchCandidates } from './rank.mjs'
 export { migrateLegacy } from './migrate.mjs'
+export { buildExtractionPrompt, parseExtraction, validateExtraction, extractWithLLM } from './llm-extract.mjs'
 
 export function envprobe({ checkSqlite = false, requireFn = null } = {}) {
   const result = {

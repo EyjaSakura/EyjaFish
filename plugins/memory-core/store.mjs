@@ -3,6 +3,7 @@ import Database from 'better-sqlite3'
 import { existsSync, mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { buildTokens } from './tokenize.mjs'
+import { extractEntities } from './extract.mjs'
 
 export const SCHEMA_VERSION = 1
 export const DEFAULT_DB = 'D:\\DSH\\qqbot\\data\\memory\\memory.db'
@@ -255,7 +256,10 @@ export function searchCandidates(db, query, { subject = null, limit = 20 } = {})
     } catch { /* FTS query can fail on punctuation; entity path still works */ }
   }
   if (subject) {
-    const entities = [...new Set((query.match(/[A-Za-z0-9_:.-]{2,}|[\u4e00-\u9fff]{2,}/g) ?? []))]
+    const entities = [...new Set([
+      ...extractEntities(query),
+      ...(query.match(/[A-Za-z0-9_:.-]{2,}|[\u4e00-\u9fff]{2,}/g) ?? []),
+    ])]
     if (entities.length > 0) {
       const placeholders = entities.map(() => '?').join(',')
       const rows = db.prepare(`SELECT n.id,n.subject,n.description,n.entities_json,n.created_at,n.importance

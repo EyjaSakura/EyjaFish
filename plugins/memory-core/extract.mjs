@@ -18,6 +18,7 @@ export function extractEntities(text) {
   for (const match of value.matchAll(/\b\d{5,11}\b/g)) entities.add(`qq:${match[0]}`)
   for (const match of value.matchAll(/(?:port|端口)\s*[：:]?\s*(\d{2,5})/gi)) entities.add(`port:${match[1]}`)
   for (const match of value.matchAll(/\b(D:\\[^\s，。；;]+)/g)) entities.add(`path:${match[1]}`)
+  for (const match of value.matchAll(/([\u4e00-\u9fff]{1,4}(?:姐|哥|叔|姨|老师|同学|总))/g)) entities.add(`person:${match[1]}`)
   return [...entities]
 }
 

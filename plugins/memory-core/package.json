@@ -11,6 +11,12 @@
   "dsh": {
     "stage": 2
   },
+  "scripts": {
+    "probes": "node probes.mjs",
+    "shadow-report": "node bin/shadow-report.mjs",
+    "migrate": "node migrate-cli.mjs",
+    "admin": "node admin.mjs"
+  },
   "dependencies": {
     "better-sqlite3": "11.10.0"
   }

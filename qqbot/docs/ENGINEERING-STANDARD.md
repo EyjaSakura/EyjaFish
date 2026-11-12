@@ -512,7 +512,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File D:\DSH\qqbot\scripts\health.
 
 ```text
 core+services：行 97 / 分支 82 / 函数 79
-all-lib（排除 bridge）：行 80 / 分支 73 / 函数 70（当前 85.00 / 75.01 / 72.53）
+all-lib（排除 bridge）：行 80 / 分支 73 / 函数 70（当前 85.00 / 75.00 / 72.53）
 bridge.js：行 55.43 / 分支 73.33 / 函数 3.31（基线 59 / 85 / 12，只升不降）
 ```
 
@@ -550,7 +550,7 @@ core+services 0 / bridge 0 / features 0
 覆盖率已恢复到标准阈值：
 
 ```text
-all-lib 80 / 73 / 70，当前 85.00 / 75.01 / 72.53
+all-lib 80 / 73 / 70，当前 85.00 / 75.00 / 72.53
 ```
 
 以后若因外部原因必须临时建基线：
