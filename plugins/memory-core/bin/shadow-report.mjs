@@ -14,6 +14,7 @@ const days = Math.max(1, Number(arg('--days', 2)) || 2)
 const dbFile = arg('--db', DEFAULT_DB)
 const statusFile = arg('--status', 'D:\\DSH\\qqbot\\data\\memory\\status.json')
 const logFile = arg('--log', 'C:\\Users\\Eyjafjalla\\qq-bridge-debug.log')
+const shadowLogFile = arg('--shadow-log', 'D:\\DSH\\qqbot\\data\\memory\\shadow-recall.jsonl')
 const outFile = arg('--out', join('D:\\DSH\\qqbot\\data\\memory', `shadow-report-${new Date().toISOString().slice(0, 10)}.md`))
 const since = Date.now() - days * 86_400_000
 
@@ -78,6 +79,32 @@ lines.push('')
 lines.push('## Recall 日志（最近 5000 行）')
 lines.push('```json')
 lines.push(JSON.stringify({ total: recallLines.length, by: recallBy }, null, 2))
+lines.push('```')
+let shadowRows = []
+if (existsSync(shadowLogFile)) {
+  try {
+    shadowRows = readFileSync(shadowLogFile, 'utf8').split('\n').filter(Boolean).slice(-5000)
+      .map((line) => { try { return JSON.parse(line) } catch { return null } })
+      .filter((row) => row && Number(row.ts) >= since)
+  } catch { /* ignore */ }
+}
+const shadowNonEmpty = shadowRows.filter((row) => String(row.text ?? '') !== '').length
+const shadowBySource = {}
+for (const row of shadowRows) shadowBySource[row.source || '?'] = (shadowBySource[row.source || '?'] ?? 0) + 1
+lines.push('')
+lines.push('## Shadow 候选记录')
+lines.push('```json')
+lines.push(JSON.stringify({
+  total: shadowRows.length,
+  nonEmpty: shadowNonEmpty,
+  empty: shadowRows.length - shadowNonEmpty,
+  bySource: shadowBySource,
+  samples: shadowRows.filter((row) => String(row.text ?? '') !== '').slice(-5).map((row) => ({
+    at: new Date(Number(row.ts)).toLocaleString('zh-CN'),
+    query: row.query,
+    text: String(row.text).slice(0, 240),
+  })),
+}, null, 2))
 lines.push('```')
 lines.push('')
 lines.push('## 观察建议')

@@ -21,6 +21,7 @@ test('memory adapter：off 不加载 core、不注入', async () => {
     let loads = 0
     const adapter = createMemoryAdapter({
       statusFile: file,
+      shadowLogFile: join(dir, 'shadow-recall.jsonl'),
       loadCore: async () => { loads += 1; return {} },
       notify: async () => {},
     })
@@ -39,6 +40,7 @@ test('memory adapter：shadow 保留旧文本、不注入', async () => {
   try {
     const adapter = createMemoryAdapter({
       statusFile: file,
+      shadowLogFile: join(dir, 'shadow-recall.jsonl'),
       loadCore: async () => ({ VERSION: 'stage0' }),
       notify: async () => {},
     })
@@ -58,6 +60,7 @@ test('memory adapter：core 不可用 → degraded + 通知去重', async () => 
     const notices = []
     const adapter = createMemoryAdapter({
       statusFile: file,
+      shadowLogFile: join(dir, 'shadow-recall.jsonl'),
       loadCore: async () => { throw new Error('better-sqlite3 missing') },
       notify: async ({ text }) => { notices.push(text) },
       now: () => Date.parse('2026-11-12T12:00:00+08:00'),
@@ -81,6 +84,7 @@ test('memory adapter：degraded 恢复回 shadow 并通知', async () => {
     const notices = []
     const adapter = createMemoryAdapter({
       statusFile: file,
+      shadowLogFile: join(dir, 'shadow-recall.jsonl'),
       loadCore: async () => ({ VERSION: 'stage0' }),
       notify: async ({ text }) => { notices.push(text) },
       now: () => Date.parse('2026-11-12T12:00:00+08:00'),
@@ -95,12 +99,39 @@ test('memory adapter：degraded 恢复回 shadow 并通知', async () => {
   }
 })
 
+test('memory adapter：shadow recall 写入 shadow-recall.jsonl', async () => {
+  const { dir, file } = tempStatus('shadow')
+  try {
+    const logFile = join(dir, 'shadow-recall.jsonl')
+    const adapter = createMemoryAdapter({
+      statusFile: file,
+      shadowLogFile: logFile,
+      loadCore: async () => ({
+        STAGE: 2,
+        openStore: () => ({}),
+        recallText: () => '【候选】端口 6700',
+      }),
+      notify: async () => {},
+    })
+    const result = await adapter.recall({ bridge: {}, key: 'u:1', fallbackText: 'OLD', message: { text: '端口 6700' } })
+    assert.equal(result.inject, false)
+    assert.match(result.text, /6700/)
+    const line = JSON.parse(readFileSync(logFile, 'utf8').trim())
+    assert.equal(line.mode, 'shadow')
+    assert.equal(line.subject, 'u:1')
+    assert.match(line.text, /6700/)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
 test('memory adapter：stage1 ingest 写 SQLite，shadow 仍不注入', async () => {
   const { dir, file } = tempStatus('shadow')
   const db = core.openStore(':memory:')
   try {
     const adapter = createMemoryAdapter({
       statusFile: file,
+      shadowLogFile: join(dir, 'shadow-recall.jsonl'),
       loadCore: async () => ({
         ...core,
         DEFAULT_DB: ':memory:',
@@ -128,7 +159,7 @@ test('memory adapter：stage1 ingest 写 SQLite，shadow 仍不注入', async ()
 test('memory adapter：ingest 阶段 0 no-op，不抛', async () => {
   const { dir, file } = tempStatus('shadow')
   try {
-    const adapter = createMemoryAdapter({ statusFile: file, loadCore: async () => ({}), notify: async () => {} })
+    const adapter = createMemoryAdapter({ statusFile: file, shadowLogFile: join(dir, 'shadow-recall.jsonl'), loadCore: async () => ({}), notify: async () => {} })
     const result = await adapter.ingest({ windowId: 'w1', turns: [] })
     assert.equal(result.accepted, false)
     assert.equal(result.source, 'stage0-noop')

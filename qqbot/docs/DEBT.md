@@ -50,7 +50,7 @@
 
 ### 2d. feature 包本地单测已覆盖 14/14
 
-- 现状：14 个 feature 包中，14 个 feature 均已有本地单测（71 项，覆盖率 39.75 / 64.94 / 23.55）；commands 已补 /help 行为测试
+- 现状：14 个 feature 包中，14 个 feature 均已有本地单测（72 项，覆盖率 40.03 / 64.46 / 23.75）；commands 已补 /help 行为测试
 - 已加：`scripts/test-features.mjs` + CI `feature tests` 步骤
 - 风险：其余 feature 的业务分支主要靠手测/线上暴露
 - 验收：每个 feature 至少一个可独立跑的单测；CI 覆盖全部 feature
@@ -88,9 +88,11 @@
 - 排序：BM25+实体+recency+importance，shadow 候选注入=false；memory_search/timeline 接新库
 - 抽取：确定性 event + 显式 fact（记住/喜欢/讨厌/答应/端口）；`llm-extract.mjs` 接口/校验/回退已备，未启用模型调用
 - 观测：`bin/shadow-report.mjs` 生成日报（模式/节点/窗口/队列/dead/pending/recall 统计）
+- 候选日志：`data/memory/shadow-recall.jsonl`（query/候选文本/来源，5MB 轮转）
+- 定时：Windows 任务 `DSH-QQBot-Memory-ShadowReport` 每日 23:50 生成报告
 - 探针：`probes.mjs` 覆盖单字、BM25 方向、实体、幂等、pending、空值
 - 默认 `MEMORY_MODE=shadow`：stage2 recall 只记录候选，`inject=false`，不改变回复
-- 验证：`test:new` 204、feature 71、CI OK、health HEALTH OK
+- 验证：`test:new` 204、feature 72、CI OK、health HEALTH OK
 - 待办：LLM 抽取评分、narrative/离线巩固、on 模式（stage 2.5/3）
 
 ## P2
@@ -131,7 +133,7 @@
 
 ### 5. functions 覆盖仍低于 lines
 
-- 现状：all-lib 85.00 / 75.00 / 72.53（lines / branches / functions）
+- 现状：all-lib 85.00 / 75.01 / 72.53（lines / branches / functions）
 - 风险：默认回调、错误分支可能没测
 - 验收：functions ≥ 75%，branches ≥ 80%（分批提升，不一次拉满）
 

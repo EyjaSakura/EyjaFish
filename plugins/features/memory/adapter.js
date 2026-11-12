@@ -3,6 +3,7 @@
 // stay behind memory-core; this file only calls its public API.
 import { DEFAULT_STATUS_FILE, normalizeMode, readStatus, today, writeStatus } from './status.js'
 import { notifyOwner as realNotifyOwner } from './notify.js'
+import { appendShadowRecall, DEFAULT_SHADOW_LOG } from './shadow-log.mjs'
 
 const CORE_URL = new URL('../../memory-core/index.mjs', import.meta.url).href
 
@@ -13,7 +14,8 @@ const CORE_URL = new URL('../../memory-core/index.mjs', import.meta.url).href
  *   notify?: (args: { bridge?: any, text?: string }) => Promise<any>,
  *   now?: () => number,
  *   env?: any,
- *   debugLog?: (message: string) => void
+ *   debugLog?: (message: string) => void,
+ *   shadowLogFile?: string
  * }} [options]
  */
 export function createMemoryAdapter({
@@ -23,6 +25,7 @@ export function createMemoryAdapter({
   now = Date.now,
   env = process.env,
   debugLog = () => {},
+  shadowLogFile = DEFAULT_SHADOW_LOG,
 } = {}) {
   let db = null
   let coreModule = null
@@ -118,11 +121,11 @@ export function createMemoryAdapter({
       return { mode: 'degraded', inject: false, text: fallbackText, source: 'fallback:recent' }
     }
     const mode = normalizeMode(status.mode, initialMode())
+    const query = String(message?.text ?? message?.raw_message ?? '')
     let text = fallbackText
     try {
       const handle = openDb(mod)
       if (handle && typeof mod.recallText === 'function') {
-        const query = String(message?.text ?? message?.raw_message ?? '')
         const recalled = mod.recallText(handle, { subject: key, query, limit: 8 })
         if (typeof recalled === 'string' && recalled !== '') text = recalled
       }
@@ -130,12 +133,19 @@ export function createMemoryAdapter({
       status = await degrade(error?.message ?? String(error), bridge)
       return { mode: 'degraded', inject: false, text: fallbackText, source: 'fallback:recent' }
     }
-    // Stage 1: shadow compares the candidate block but never injects it.
+    const source = text === fallbackText ? 'stage2-shadow-empty' : 'stage2-shadow'
+    if (mode === 'shadow') {
+      appendShadowRecall({
+        mode, source, subject: key, query,
+        text: text === fallbackText ? '' : text,
+      }, shadowLogFile)
+    }
+    // Stage 2: shadow compares the candidate block but never injects it.
     return {
       mode,
       inject: false,
       text,
-      source: text === fallbackText ? 'stage2-shadow-empty' : 'stage2-shadow',
+      source,
       stage: Number(mod?.STAGE) || 1,
     }
   }
