@@ -7,6 +7,10 @@ import { buildTokens } from './tokenize.mjs'
 export const SCHEMA_VERSION = 1
 export const DEFAULT_DB = 'D:\\DSH\\qqbot\\data\\memory\\memory.db'
 
+const LOW_RISK_PREDICATES = new Set([
+  'config', 'port', 'path', 'model', 'version', 'identity.name', 'identity.role',
+])
+
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS schema_migrations (
   version INTEGER PRIMARY KEY,
@@ -197,6 +201,17 @@ export function addNode(db, node) {
     })
     const entityInsert = db.prepare('INSERT OR IGNORE INTO node_entities(node_id, entity) VALUES (?, ?)')
     for (const entity of entities) entityInsert.run(id, String(entity))
+    // Low-risk fact supersession only; sensitive predicates stay pending.
+    if (node.type === 'fact' && node.predicate && node.status !== 'pending' && LOW_RISK_PREDICATES.has(String(node.predicate))) {
+      const old = db.prepare(`SELECT id FROM nodes WHERE subject=? AND predicate=? AND status='active' AND id<>? ORDER BY created_at DESC LIMIT 1`)
+        .get(String(node.subject ?? ''), String(node.predicate), id)
+      if (old) {
+        db.prepare(`UPDATE nodes SET status='superseded', superseded_by=?, last_accessed_at=? WHERE id=?`)
+          .run(id, now, old.id)
+        db.prepare(`UPDATE nodes SET supersedes_json=? WHERE id=?`)
+          .run(JSON.stringify([old.id]), id)
+      }
+    }
     return { id, rowId: Number(result.lastInsertRowid), inserted: true }
   } catch (error) {
     if (String(error?.code).includes('SQLITE_CONSTRAINT') || String(error?.message).includes('UNIQUE')) {

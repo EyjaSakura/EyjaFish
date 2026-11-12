@@ -80,6 +80,22 @@ test('memory-core：ingestTurn 写入 window_turns 并幂等去重', () => {
   }
 })
 
+test('memory-core：低风险 fact 自动 supersede，可回滚链', () => {
+  const db = memoryDb()
+  try {
+    addNode(db, { id: 'port-1', type: 'fact', subject: 'misc.port', predicate: 'port', description: '端口 6700', owner_confirmed: 1 })
+    addNode(db, { id: 'port-2', type: 'fact', subject: 'misc.port', predicate: 'port', description: '端口 6701', owner_confirmed: 1 })
+    const old = db.prepare("SELECT status,superseded_by FROM nodes WHERE id='port-1'").get()
+    const next = db.prepare("SELECT status,supersedes_json FROM nodes WHERE id='port-2'").get()
+    assert.equal(old.status, 'superseded')
+    assert.equal(old.superseded_by, 'port-2')
+    assert.equal(next.status, 'active')
+    assert.match(next.supersedes_json, /port-1/)
+  } finally {
+    closeStore(db)
+  }
+})
+
 test('memory-core：pending 事实可确认/拒绝', () => {
   const db = memoryDb()
   try {

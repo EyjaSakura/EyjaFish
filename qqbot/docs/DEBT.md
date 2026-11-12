@@ -86,7 +86,7 @@
 - 数据迁移：facts 21 + events 373 → 394 nodes；备份在 `backups\memory-v2-before-stage1-20261112-174908`
 - 写入：window_turns 幂等、队列、turn_decisions、FTS5 双索引、实体索引、pending/confirm
 - 默认 `MEMORY_MODE=shadow`：stage1 recall 只记录候选，`inject=false`，不改变回复
-- 验证：`test:new` 200、feature 71、CI OK、health HEALTH OK
+- 验证：`test:new` 201、feature 71、CI OK、health HEALTH OK
 - 待办：LLM 抽取评分、narrative/离线巩固、完整 recall 排序与 on 模式（stage 1.5/2）
 
 ## P2
