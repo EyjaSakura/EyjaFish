@@ -246,7 +246,7 @@ export function searchCandidates(db, query, { subject = null, limit = 20 } = {})
   if (tokens !== '') {
     const match = tokens.split(/\s+/).map((t) => `"${t.replace(/"/g, '')}"`).join(' OR ')
     try {
-      const rows = db.prepare(`SELECT n.id,n.subject,n.description,n.entities_json,n.created_at,
+      const rows = db.prepare(`SELECT n.id,n.subject,n.description,n.entities_json,n.created_at,n.importance,
         bm25(nodes_fts) AS bm25
         FROM nodes_fts JOIN nodes n ON n.row_id = nodes_fts.rowid
         WHERE nodes_fts MATCH ? AND n.status='active' ${subject ? 'AND n.subject=?' : ''}
@@ -258,7 +258,7 @@ export function searchCandidates(db, query, { subject = null, limit = 20 } = {})
     const entities = [...new Set((query.match(/[A-Za-z0-9_:.-]{2,}|[\u4e00-\u9fff]{2,}/g) ?? []))]
     if (entities.length > 0) {
       const placeholders = entities.map(() => '?').join(',')
-      const rows = db.prepare(`SELECT n.id,n.subject,n.description,n.entities_json,n.created_at
+      const rows = db.prepare(`SELECT n.id,n.subject,n.description,n.entities_json,n.created_at,n.importance
         FROM nodes n JOIN node_entities e ON e.node_id=n.id
         WHERE n.status='active' AND n.subject=? AND e.entity IN (${placeholders}) LIMIT ?`)
         .all(subject, ...entities, limit)

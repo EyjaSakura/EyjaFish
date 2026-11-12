@@ -4,11 +4,17 @@ import { pathToFileURL } from 'node:url'
 import { memoryAdapter } from './adapter.js'
 
 const MEMORY_DIR = 'D:/DSH/qqbot/data/memory'
+let newDb = null
 
 export function registerMemoryTools({ defineTool, agentCtx, key, debugLog }) {
   const flag = 'D:\\DSH\\qqbot\\data\\memory\\USE_V2'
   if (!existsSync(flag)) return
   const load = () => import(pathToFileURL('D:/DSH/qqbot/data/memory/memory_store.mjs').href)
+  const loadNew = async () => {
+    const mod = await import('../../memory-core/index.mjs')
+    if (!newDb) newDb = mod.openStore(mod.DEFAULT_DB)
+    return mod
+  }
   try {
     agentCtx.tools.register(defineTool({
       name: 'memory_search',
@@ -50,11 +56,25 @@ export function registerMemoryTools({ defineTool, agentCtx, key, debugLog }) {
       timeoutMs: 15000,
       isConcurrencySafe: () => true,
       async execute(args) {
-        const m = await load()
-        const days = Number(args?.days) || 0
-        const since = days > 0 ? Date.now() - days * 86400000 : undefined
-        const hits = m.searchEvents(String(args?.query || ''), { project: args?.project, since })
-        return { hits: hits.map(h => ({ id: h.id, title: h.title, project: h.project, at: h.at, excerpt: h.excerpt })) }
+        try {
+          const mod = await loadNew()
+          const hits = mod.rankCandidates(newDb, { subject: key, query: String(args?.query || ''), limit: 20 })
+          return {
+            hits: hits.map(h => ({
+              id: h.id,
+              title: String(h.description ?? '').slice(0, 80),
+              project: '',
+              at: Number(h.created_at) || 0,
+              excerpt: String(h.description ?? '').slice(0, 200),
+            })),
+          }
+        } catch {
+          const m = await load()
+          const days = Number(args?.days) || 0
+          const since = days > 0 ? Date.now() - days * 86400000 : undefined
+          const hits = m.searchEvents(String(args?.query || ''), { project: args?.project, since })
+          return { hits: hits.map(h => ({ id: h.id, title: h.title, project: h.project, at: h.at, excerpt: h.excerpt })) }
+        }
       },
     }))
     agentCtx.tools.register(defineTool({
@@ -93,16 +113,30 @@ export function registerMemoryTools({ defineTool, agentCtx, key, debugLog }) {
       timeoutMs: 15000,
       isConcurrencySafe: () => true,
       async execute(args) {
-        const m = await load()
-        const days = Number(args?.days) || 7
-        const since = Date.now() - days * 86400000
-        const evs = m.readEvents(0, { project: args?.project }).filter(e => e.at >= since)
-        const byDay = {}
-        for (const e of evs) {
-          const day = new Date(e.at).toISOString().slice(0, 10)
-          ;(byDay[day] ||= []).push(e.title)
+        try {
+          await loadNew()
+          const days = Number(args?.days) || 7
+          const since = Date.now() - days * 86400000
+          const rows = newDb.prepare(`SELECT id,description,created_at FROM nodes
+            WHERE type='event' AND created_at>=? ORDER BY created_at DESC`).all(since)
+          const byDay = {}
+          for (const row of rows) {
+            const day = new Date(Number(row.created_at)).toISOString().slice(0, 10)
+            ;(byDay[day] ||= []).push(String(row.description ?? '').slice(0, 80))
+          }
+          return { days: Object.keys(byDay).sort().map(day => ({ day, titles: byDay[day] })) }
+        } catch {
+          const m = await load()
+          const days = Number(args?.days) || 7
+          const since = Date.now() - days * 86400000
+          const evs = m.readEvents(0, { project: args?.project }).filter(e => e.at >= since)
+          const byDay = {}
+          for (const e of evs) {
+            const day = new Date(e.at).toISOString().slice(0, 10)
+            ;(byDay[day] ||= []).push(e.title)
+          }
+          return { days: Object.keys(byDay).sort().map(day => ({ day, titles: byDay[day] })) }
         }
-        return { days: Object.keys(byDay).sort().map(day => ({ day, titles: byDay[day] })) }
       },
     }))
     debugLog(`tool surface ${key}: memory_search/memory_timeline registered`)

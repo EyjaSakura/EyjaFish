@@ -1,15 +1,15 @@
 {
   "name": "@fish/memory-core",
-  "version": "0.2.0-stage1",
+  "version": "0.3.0-stage2",
   "private": true,
   "type": "module",
   "main": "index.mjs",
   "exports": {
     ".": "./index.mjs"
   },
-  "description": "Pure memory-core for 小鲸鱼; stage 1 (SQLite store + ingest + minimal recall)",
+  "description": "Pure memory-core for 小鲸鱼; stage 2 (SQLite store + ingest + ranked shadow recall)",
   "dsh": {
-    "stage": 1
+    "stage": 2
   },
   "dependencies": {
     "better-sqlite3": "11.10.0"

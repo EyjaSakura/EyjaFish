@@ -50,7 +50,7 @@
 
 ### 2d. feature 包本地单测已覆盖 14/14
 
-- 现状：14 个 feature 包中，14 个 feature 均已有本地单测（71 项，覆盖率 39.92 / 64.94 / 23.64）；commands 已补 /help 行为测试
+- 现状：14 个 feature 包中，14 个 feature 均已有本地单测（71 项，覆盖率 39.75 / 64.94 / 23.55）；commands 已补 /help 行为测试
 - 已加：`scripts/test-features.mjs` + CI `feature tests` 步骤
 - 风险：其余 feature 的业务分支主要靠手测/线上暴露
 - 验收：每个 feature 至少一个可独立跑的单测；CI 覆盖全部 feature
@@ -77,17 +77,19 @@
 - owner 工具面：`standard` 全量（用户明确接受风险）
 - 注意：后续改权限只改 profile/ACL，不再看 `perms.json`
 
-### 2g. 记忆重构阶段 0/1 已落地（2026-11-12）
+### 2g. 记忆重构阶段 0/1/1.5/2 已落地（2026-11-12）
 
 - 规格：`小鲸鱼记忆系统重构设计报告_v2.3.6.md`（唯一实施依据）
-- 已加 `plugins/memory-core/`：纯库；`envprobe`、SQLite store、FTS5、tokenize、ingest、migrate、recall
+- 已加 `plugins/memory-core/`：纯库；`envprobe`、SQLite store、FTS5、tokenize、ingest、migrate、rank/recall
 - 已加 `plugins/features/memory/` adapter：`memoryRecall` / `memoryIngest` / `status.json` / 降级通知
 - 环境门禁：better-sqlite3@11.10.0 + FTS5 + ICU 通过；README 记录（Node 24.3.0）
 - 数据迁移：facts 21 + events 373 → 394 nodes；备份在 `backups\memory-v2-before-stage1-20261112-174908`
-- 写入：window_turns 幂等、队列、turn_decisions、FTS5 双索引、实体索引、pending/confirm
-- 默认 `MEMORY_MODE=shadow`：stage1 recall 只记录候选，`inject=false`，不改变回复
-- 验证：`test:new` 201、feature 71、CI OK、health HEALTH OK
-- 待办：LLM 抽取评分、narrative/离线巩固、完整 recall 排序与 on 模式（stage 1.5/2）
+- 写入：window_turns 幂等、队列、turn_decisions、FTS5 双索引、实体索引、pending/confirm、低风险 supersede
+- 排序：BM25+实体+recency+importance，shadow 候选注入=false；memory_search/timeline 接新库
+- 抽取：确定性 event + 显式 fact（记住/喜欢/讨厌/答应/端口），LLM 抽取未接
+- 默认 `MEMORY_MODE=shadow`：stage2 recall 只记录候选，`inject=false`，不改变回复
+- 验证：`test:new` 202、feature 71、CI OK、health HEALTH OK
+- 待办：LLM 抽取评分、narrative/离线巩固、on 模式（stage 2.5/3）
 
 ## P2
 

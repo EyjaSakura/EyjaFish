@@ -135,7 +135,7 @@ export function createMemoryAdapter({
       mode,
       inject: false,
       text,
-      source: text === fallbackText ? 'stage1-shadow-empty' : 'stage1-shadow',
+      source: text === fallbackText ? 'stage2-shadow-empty' : 'stage2-shadow',
       stage: Number(mod?.STAGE) || 1,
     }
   }
@@ -145,11 +145,15 @@ export function createMemoryAdapter({
     if (status.mode === 'off' || status.mode === 'degraded') {
       return { accepted: false, mode: status.mode, source: 'off-or-degraded' }
     }
+    // The bridge object is a Cordis facade and cannot be JSON-serialized. Keep
+    // it only for notification; never pass it into the pure core/queue.
+    const bridge = payload.bridge
+    const { bridge: _bridge, ...corePayload } = payload
     let mod
     try {
       mod = await core()
     } catch (error) {
-      await degrade(error?.message ?? String(error), payload.bridge)
+      await degrade(error?.message ?? String(error), bridge)
       return { accepted: false, mode: 'degraded', source: 'fallback' }
     }
     try {
@@ -157,10 +161,10 @@ export function createMemoryAdapter({
       if (!handle || typeof mod.ingestTurn !== 'function') {
         return { accepted: false, mode: status.mode, source: 'stage0-noop', windowId: payload.windowId ?? '' }
       }
-      const result = mod.ingestTurn(handle, payload)
-      return { ...result, mode: status.mode, source: 'stage1' }
+      const result = mod.ingestTurn(handle, corePayload)
+      return { ...result, mode: status.mode, source: 'stage2' }
     } catch (error) {
-      await degrade(error?.message ?? String(error), payload.bridge)
+      await degrade(error?.message ?? String(error), bridge)
       return { accepted: false, mode: 'degraded', source: 'fallback', error: String(error?.message ?? error) }
     }
   }

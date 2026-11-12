@@ -109,11 +109,12 @@ test('memory adapter：stage1 ingest 写 SQLite，shadow 仍不注入', async ()
       notify: async () => {},
     })
     const result = await adapter.ingest({
+      bridge: { toJSON() { throw new Error('bridge must not be serialized') } },
       subject: 'u:1', windowId: 'w1', traceId: 't1',
       turns: [{ index: 1, role: 'user', text: '记住我喜欢吃白饭', ts: 100 }],
     })
     assert.equal(result.accepted, true)
-    assert.equal(core.count(db, 'nodes'), 1)
+    assert.equal(core.count(db, 'nodes'), 2) // event + prefers 白饭
     assert.equal(core.count(db, 'window_turns'), 1)
     const recall = await adapter.recall({ bridge: {}, key: 'u:1', fallbackText: 'OLD', message: { text: '白饭' } })
     assert.equal(recall.inject, false)

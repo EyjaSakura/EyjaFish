@@ -1,6 +1,6 @@
 # memory-core
 
-纯记忆库，不依赖 DSH / bridge / QQ。当前阶段：**stage 1（轻量写入）**。
+纯记忆库，不依赖 DSH / bridge / QQ。当前阶段：**stage 2（轻量写入 + shadow 排序）**。
 
 ## 环境验证（2026-11-12）
 
@@ -41,5 +41,5 @@ facts 21 + events 373 -> 394 nodes
 
 ```text
 已做：schema / FTS5 / window_turns / 队列 / 事件写入 / facts+events 迁移 / pending 确认
-未做：LLM 抽取评分、narrative、完整 recall 排序（stage 1.5 / stage 2）
+已做：确定性事实抽取、BM25+实体+recency+importance 排序、access_count 更新、memory_search 接新库\n未做：LLM 抽取评分、narrative、on 注入（stage 2.5 / 3）
 ```

@@ -6,7 +6,7 @@ import { join } from 'node:path'
 
 import {
   openStore, closeStore, addNode, addWindowTurn, setDecision, count,
-  searchCandidates, listPending, confirmNode, ingestTurn, migrateLegacy, buildTokens,
+  searchCandidates, listPending, confirmNode, ingestTurn, migrateLegacy, buildTokens, rankCandidates,
 } from '../../memory-core/index.mjs'
 
 function memoryDb() {
@@ -74,7 +74,23 @@ test('memory-core：ingestTurn 写入 window_turns 并幂等去重', () => {
     assert.equal(first.accepted, true)
     assert.equal(second.accepted, true)
     assert.equal(count(db, 'window_turns'), 2)
-    assert.equal(count(db, 'nodes'), 1)
+    assert.equal(count(db, 'nodes'), 2) // event + prefers 白饭
+  } finally {
+    closeStore(db)
+  }
+})
+
+test('memory-core：stage2 排序方向正确，实体可召回', () => {
+  const db = memoryDb()
+  try {
+    addNode(db, { id: 'A', type: 'event', subject: 'u:1', description: '端口 6700 配置', entities: ['port:6700'], owner_confirmed: 1 })
+    addNode(db, { id: 'B', type: 'event', subject: 'u:1', description: '端口 6700 附近的说明', owner_confirmed: 1 })
+    addNode(db, { id: 'C', type: 'event', subject: 'u:1', description: '今天天气不错', owner_confirmed: 1 })
+    addNode(db, { id: 'D', type: 'event', subject: 'u:1', description: '倩倩姐最近压力大', entities: ['person:倩倩姐'], owner_confirmed: 1 })
+    const ranked = rankCandidates(db, { subject: 'u:1', query: '端口 6700', limit: 3 })
+    assert.equal(ranked[0].id, 'A')
+    const entity = rankCandidates(db, { subject: 'u:1', query: '倩倩姐', limit: 3 })
+    assert.ok(entity.some((x) => x.id === 'D'))
   } finally {
     closeStore(db)
   }
