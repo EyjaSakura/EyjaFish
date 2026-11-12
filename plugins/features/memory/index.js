@@ -1,6 +1,7 @@
 // 记忆工具：memory_search / memory_timeline（只读长期记忆 v2）
 import { existsSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
+import { memoryAdapter } from './adapter.js'
 
 const MEMORY_DIR = 'D:/DSH/qqbot/data/memory'
 
@@ -110,4 +111,16 @@ export function registerMemoryTools({ defineTool, agentCtx, key, debugLog }) {
   }
 }
 
-export const hooks = { registerMemoryTools }
+export function memoryRecall(ctx) {
+  return memoryAdapter.recall(ctx)
+}
+
+export function memoryIngest(ctx) {
+  return memoryAdapter.ingest(ctx)
+}
+
+export function memoryHealth() {
+  return memoryAdapter.health()
+}
+
+export const hooks = { registerMemoryTools, memoryRecall, memoryIngest }

@@ -8,6 +8,7 @@ import { parseKeywordCommand } from './keywords.js'
 import { parseVerifyCommand } from './verify.js'
 import { isQuietTime } from './shared-helpers.js'
 import { ADMIN_COMMAND_CAPABILITY, OPS_ARG_WORDS } from './command-constants.js'
+import { callMemoryRecall } from './services/memory-seam.js'
 
 
 export async function onQqMessageInner({ message, bridge, defineTool, debugLog }) {
@@ -652,6 +653,9 @@ export async function onQqMessageInner({ message, bridge, defineTool, debugLog }
     mark('agent', true, `会话就绪 ${entry.sessionId.slice(0, 8)}${entry.resumed ? '（续接）' : '（新建）'}`)
     bridge.recordMemory(bridge.routeKey(message), 'user', effectiveText)
     entry.lastTraceId = trace?.id ?? ''
+    entry.lastUserText = String(text ?? '')
+    entry.lastUserAt = Date.now()
+    entry.lastTurnIndex = Number(entry.lastTurnIndex || 0) + 1
     entry.lastTurnAt = Date.now()
     entry.lastInboundMessageId = message.messageId ?? ''
     // 统一走 #handoff 记账：主线之外的 followup（/summary、私聊语音、日报）也必须记账，
@@ -674,10 +678,29 @@ export async function onQqMessageInner({ message, bridge, defineTool, debugLog }
   } catch { /* ignore */ } // [quote-reply]
     }
     // [shared-memory] 三个窗口共用同一份事实记忆
+    let __sm = ''
     try {
-      const __sm = bridge.sharedMemoryBlock(bridge.chatKeyOf(bridge.routeOf(message)))
-      if (__sm) effectiveText = effectiveText + '\n\n' + __sm
+      __sm = bridge.sharedMemoryBlock(bridge.chatKeyOf(bridge.routeOf(message))) || ''
     } catch { /* ignore */ }
+    // [memory-seam] stage 0: feature-memory gets a recall seam. Shadow mode
+    // must not change replies; on mode only replaces the block if it asks to.
+    try {
+      const __mr = await callMemoryRecall({
+        bridge,
+        context: {
+          contractVersion: 1,
+          message,
+          key: bridge.routeKey(message),
+          chatKey: bridge.chatKeyOf(bridge.routeOf(message)),
+          fallbackText: __sm,
+          budgetChars: 900,
+        },
+        debugLog,
+      })
+      if (__mr?.source) debugLog(`[memory] recall mode=${__mr.mode ?? '?'} source=${__mr.source} inject=${__mr.inject === true}`)
+      if (__mr?.inject === true && typeof __mr.text === 'string' && __mr.text !== '') __sm = __mr.text
+    } catch { /* keep legacy block */ }
+    if (__sm) effectiveText = effectiveText + '\n\n' + __sm
     // [self-state] 一条鱼的状态层：三个窗口读同一份「我现在在干什么」
     try {
       const __ss = bridge.selfStateBlock(bridge.chatKeyOf(bridge.routeOf(message)))

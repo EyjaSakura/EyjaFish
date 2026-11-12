@@ -1,12 +1,14 @@
 {
   "name": "@fish/feature-memory",
   "version": "1.0.0",
-  "description": "小鲸鱼记忆功能插件：memory_search / memory_timeline",
+  "description": "小鲸鱼记忆功能插件：memory_search / memory_timeline + stage0 recall/ingest seam",
   "type": "module",
   "main": "index.js",
   "dshFeature": {
     "hooks": [
-      "registerMemoryTools"
+      "registerMemoryTools",
+      "memoryRecall",
+      "memoryIngest"
     ],
     "dataPaths": [
       "D:\\DSH\\qqbot\\data\\memory"

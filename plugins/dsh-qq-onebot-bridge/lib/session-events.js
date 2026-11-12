@@ -2,6 +2,7 @@
 import { existsSync, readFileSync, writeFileSync, appendFileSync, readdirSync, mkdirSync, copyFileSync, unlinkSync, statSync } from 'node:fs'
 import { join, basename, dirname, extname } from 'node:path'
 import { assistantText } from './shared-helpers.js'
+import { callMemoryIngest } from './services/memory-seam.js'
 
 export function onSessionEvent({ session, event, bridge, defineTool, debugLog }) {
   if (bridge.stopped) return
@@ -94,6 +95,23 @@ export function onSessionEvent({ session, event, bridge, defineTool, debugLog })
     return
   }
   bridge.recordMemory(entry.key, 'assistant', text)
+  try {
+    callMemoryIngest({
+      bridge,
+      context: {
+        contractVersion: 1,
+        subject: entry.key,
+        windowId: entry.sessionId || entry.key,
+        traceId: entry.lastTraceId || '',
+        turns: [
+          { index: entry.lastTurnIndex || 0, role: 'user', text: entry.lastUserText || '', ts: entry.lastUserAt || Date.now() },
+          { index: entry.lastTurnIndex || 0, role: 'assistant', text, ts: Date.now() },
+        ],
+        source: 'qq-turn',
+      },
+      debugLog,
+    })
+  } catch { /* memory seam is best-effort */ }
   entry.lastTurnAt = Date.now()
   // 注入回合的模型回复：默认整回合拦截，保证注入不会误发 QQ。
   // 显式 injectDryRun=false 时允许真实发送（只对测试号/测试群使用）。
