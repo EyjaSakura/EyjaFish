@@ -684,6 +684,13 @@ export async function onQqMessageInner({ message, bridge, defineTool, debugLog }
     } catch { /* ignore */ }
     // [memory-seam] stage 0: feature-memory gets a recall seam. Shadow mode
     // must not change replies; on mode only replaces the block if it asks to.
+    let __recentTurns = []
+    try {
+      const __now = Date.now()
+      __recentTurns = bridge.loadMemoryLines(bridge.routeKey(message))
+        .slice(-12)
+        .map((line, index) => ({ index, role: 'context', text: line, ts: __now }))
+    } catch { /* ignore */ }
     try {
       const __mr = await callMemoryRecall({
         bridge,
@@ -693,6 +700,7 @@ export async function onQqMessageInner({ message, bridge, defineTool, debugLog }
           key: bridge.routeKey(message),
           chatKey: bridge.chatKeyOf(bridge.routeOf(message)),
           fallbackText: __sm,
+          recentTurns: __recentTurns,
           budgetChars: 900,
         },
         debugLog,
