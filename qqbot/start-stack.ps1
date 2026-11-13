@@ -84,6 +84,7 @@ if ($qqProcs -eq '0') {
 }
 
 # --- 3. dsh web ---
+$webStartedAt = Get-Date
 if (Get-NetTCPConnection -State Listen -LocalPort 13080 -ErrorAction SilentlyContinue) {
     Write-Log 'dsh web already listening on 13080'
 } else {
@@ -155,10 +156,28 @@ if (-not $NoBrowser) {
     $edge = 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
     if (-not (Test-Path $edge)) { $edge = 'C:\Program Files\Microsoft\Edge\Application\msedge.exe' }
     # [open-ui-only] 只开 NapCat WebUI + 权限面板；DSH 是后台大脑，不显式打开
-    $webui = 'http://127.0.0.1:6099/webui?token=904845364df0'
+    # NapCat 刚启动时 6099 可能还没 listen，先等最多 20 秒，避免浏览器打开空白页。
+    $webuiReady = $false
+    for ($i = 0; $i -lt 20; $i++) {
+        try {
+            $r = Invoke-WebRequest -UseBasicParsing -Uri 'http://127.0.0.1:6099/webui' -TimeoutSec 2
+            if ($r.StatusCode -eq 200) { $webuiReady = $true; break }
+        } catch { }
+        Start-Sleep -Seconds 1
+    }
+    if (-not $webuiReady) { Write-Log 'WARN napcat webui 6099 not ready after 20s; opening anyway' }
+
+    # token 可从 data\napcat-webui-token.txt 覆盖，避免硬编码过期。
+    $tokenFile = Join-Path $Root 'data\napcat-webui-token.txt'
+    $token = '904845364df0'
+    if (Test-Path $tokenFile) {
+        $t = (Get-Content $tokenFile -Raw -Encoding UTF8).Trim()
+        if ($t) { $token = $t }
+    }
+    $webui = if ($token) { "http://127.0.0.1:6099/webui?token=$token" } else { 'http://127.0.0.1:6099/webui' }
     $panelUrl = 'http://127.0.0.1:8899'
     if (Test-Path $edge) {
-        Write-Log 'opening Edge (webui + panel)'
+        Write-Log "opening Edge: $webui"
         Start-Process -FilePath $edge -ArgumentList @('--new-window', $webui)
         Start-Sleep -Milliseconds 800
         Start-Process -FilePath $edge -ArgumentList @($panelUrl)

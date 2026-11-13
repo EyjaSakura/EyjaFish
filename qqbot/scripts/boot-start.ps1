@@ -1,4 +1,4 @@
-# boot-start.ps1 - boot entry: campus login (5 tries) -> popup + wait for manual login -> voice -> bot stack
+﻿# boot-start.ps1 - boot entry: campus login (5 tries) -> popup + wait for manual login -> voice -> bot stack
 # ASCII only. Chinese alert text lives in data\campus-alert-title.txt / campus-alert-template.txt (UTF-8).
 param([switch]$SkipStack, [switch]$SkipVoice)
 
@@ -102,7 +102,7 @@ if (-not $SkipVoice) {
 # 5. bot stack only when online
 if (-not $SkipStack) {
     if ($online) {
-        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'D:\DSH\qqbot\start-stack.ps1' -Boot -NoBrowser
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'D:\DSH\qqbot\start-stack.ps1' -Boot
         Write-Log "stack start rc=$LASTEXITCODE"
     } else {
         Write-Log 'SKIP stack start because offline'
