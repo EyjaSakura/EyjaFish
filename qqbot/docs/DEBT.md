@@ -92,6 +92,7 @@
 - 定时：Windows 任务 `DSH-QQBot-Memory-ShadowReport` 每日 23:50 生成报告
 - 探针：`probes.mjs` 覆盖单字、BM25 方向、实体、幂等、pending、空值
 - 数据清洗：91 条系统/抖音包装节点、353 条 legacy 工程事件归档；52 条内部 window_turns 删除
+- 回填：`backfill-events.mjs` 从 window_turns 补回 17 条短消息事件
 - 检索：系统/注入文本不入节点；内容词 OR + BM25，避免单字把任意消息匹配进来
 - 默认 `MEMORY_MODE=shadow`：stage2 recall 只记录候选，`inject=false`，不改变回复
 - 验证：`test:new` 205、feature 72、CI OK、health HEALTH OK
