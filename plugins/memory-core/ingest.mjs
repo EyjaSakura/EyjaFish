@@ -1,6 +1,6 @@
 // Stage 1 ingest: deterministic events + durable window turns + queue record.
 import { addNode, addWindowTurn, enqueue, setDecision } from './store.mjs'
-import { extractStageOneNodes, isSubstantive } from './extract.mjs'
+import { extractStageOneNodes, isMemoryEvent, isInternalText } from './extract.mjs'
 
 export function ingestTurn(db, payload = {}) {
   const subject = String(payload.subject ?? 'unknown')
@@ -11,20 +11,23 @@ export function ingestTurn(db, payload = {}) {
   const queued = enqueue(db, { turnKey, payload })
   const write = db.transaction(() => {
     for (const turn of turns) {
-      addWindowTurn(db, {
-        windowId,
-        subject,
-        index: turn.index ?? 0,
-        role: turn.role ?? 'context',
-        text: String(turn.text ?? '').slice(0, 2000),
-        ts: turn.ts,
-      })
+      const internal = turn.role === 'user' && (turn.injected === true || isInternalText(turn.text))
+      if (!internal) {
+        addWindowTurn(db, {
+          windowId,
+          subject,
+          index: turn.index ?? 0,
+          role: turn.role ?? 'context',
+          text: String(turn.text ?? '').slice(0, 2000),
+          ts: turn.ts,
+        })
+      }
       if (turn.role === 'user') {
         setDecision(db, {
           windowId,
           index: turn.index ?? 0,
-          decision: isSubstantive(turn.text) ? 'extract' : 'skip',
-          reason: isSubstantive(turn.text) ? 'stage1-rule' : 'short-or-greeting',
+          decision: (turn.injected !== true && isMemoryEvent(turn.text)) ? 'extract' : 'skip',
+          reason: (turn.injected !== true && isMemoryEvent(turn.text)) ? 'stage1-event' : 'internal-or-short',
         })
       }
     }

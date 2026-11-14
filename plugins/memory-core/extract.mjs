@@ -4,12 +4,31 @@
 const SUBSTANTIVE = /(记住|记一下|别忘了|约定|答应|喜欢|讨厌|想要|准备|正在|最近|今天|明天|昨天|端口|路径|文件|项目|工作|学习|考试|生日|名字|住在|养了|买了|去了|做了|开始|结束|完成)/
 const GREETING = /^(你好|在吗|嗨|hi|hello|早|晚安|早安|午安|哈哈|嗯|哦|好的|ok|行|可以)[。！!？?~～\s]*$/i
 const IDENTITY = /^(记住|记一下)[：:，,\s]*(.*(?:管理员|主人|权限|身份|密码|地址|电话).*)$/
+// Internal orchestration wrappers are not user memories. Ingesting them causes
+// the memory system to echo system prompts back as candidates.
+const INTERNAL = /^\s*【(?:系统|注入|自动|提醒|视频分析完成|抖音私信|管理|运维|心跳)】/
+
+export function isInternalText(text) {
+  return INTERNAL.test(String(text ?? ''))
+}
 
 export function isSubstantive(text) {
   const value = String(text ?? '').trim()
   if (value.length < 6) return false
+  if (isInternalText(value)) return false
   if (GREETING.test(value)) return false
   return SUBSTANTIVE.test(value) || value.length >= 20
+}
+
+// Events are cheaper than facts: keep every real, non-greeting user message so
+// short but meaningful lines ("来清吧喝酒了") are not silently lost. Facts
+// still use the stricter isSubstantive gate.
+export function isMemoryEvent(text) {
+  const value = String(text ?? '').trim()
+  if (value.length < 2) return false
+  if (isInternalText(value)) return false
+  if (GREETING.test(value)) return false
+  return /[\p{L}\p{N}]/u.test(value)
 }
 
 export function extractEntities(text) {
@@ -50,8 +69,9 @@ export function extractStageOneNodes({ subject, windowId, traceId, turns = [] })
   const nodes = []
   for (const turn of turns) {
     if (turn.role !== 'user') continue
+    if (turn.injected === true) continue
     const text = String(turn.text ?? '').trim()
-    if (!isSubstantive(text)) continue
+    if (!isMemoryEvent(text)) continue
     const local = { ...turn, __traceId: traceId, __windowId: windowId }
     nodes.push({
       id: `ev-${traceId || Date.now()}-${turn.index ?? 0}`,
@@ -72,16 +92,18 @@ export function extractStageOneNodes({ subject, windowId, traceId, turns = [] })
       owner_confirmed: 1,
       time_scope: 'permanent',
     })
-    const identity = IDENTITY.exec(text)
-    if (identity) pushFact(nodes, local, `${subject}.identity`, 'identity.claim', identity[2], { pending: true, importance: 0.8 })
-    const port = /(?:端口|port)\s*[：:]?\s*(\d{2,5})/i.exec(text)
-    if (port) pushFact(nodes, local, 'system.port', 'port', port[1])
-    const prefer = /我(?:很)?(?:喜欢|爱)\s*([^。！!？?\n]{1,40})/.exec(text)
-    if (prefer) pushFact(nodes, local, `${subject}.preferences`, 'prefers', prefer[1])
-    const dislike = /我(?:很)?(?:讨厌|不喜欢)\s*([^。！!？?\n]{1,40})/.exec(text)
-    if (dislike) pushFact(nodes, local, `${subject}.preferences`, 'dislikes', dislike[1])
-    const promise = /(?:答应|约定|说好)\s*([^。！!？?\n]{1,80})/.exec(text)
-    if (promise) pushFact(nodes, local, `${subject}.promises`, 'promise', promise[1], { importance: 0.75 })
+    if (isSubstantive(text)) {
+      const identity = IDENTITY.exec(text)
+      if (identity) pushFact(nodes, local, `${subject}.identity`, 'identity.claim', identity[2], { pending: true, importance: 0.8 })
+      const port = /(?:端口|port)\s*[：:]?\s*(\d{2,5})/i.exec(text)
+      if (port) pushFact(nodes, local, 'system.port', 'port', port[1])
+      const prefer = /我(?:很)?(?:喜欢|爱)\s*([^。！!？?\n]{1,40})/.exec(text)
+      if (prefer) pushFact(nodes, local, `${subject}.preferences`, 'prefers', prefer[1])
+      const dislike = /我(?:很)?(?:讨厌|不喜欢)\s*([^。！!？?\n]{1,40})/.exec(text)
+      if (dislike) pushFact(nodes, local, `${subject}.preferences`, 'dislikes', dislike[1])
+      const promise = /(?:答应|约定|说好)\s*([^。！!？?\n]{1,80})/.exec(text)
+      if (promise) pushFact(nodes, local, `${subject}.promises`, 'promise', promise[1], { importance: 0.75 })
+    }
   }
   return nodes
 }

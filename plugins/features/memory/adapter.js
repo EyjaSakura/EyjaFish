@@ -121,7 +121,7 @@ export function createMemoryAdapter({
       return { mode: 'degraded', inject: false, text: fallbackText, source: 'fallback:recent' }
     }
     const mode = normalizeMode(status.mode, initialMode())
-    const query = String(message?.text ?? message?.raw_message ?? '')
+    const query = String(message?.text || message?.raw_message || '')
     let text = fallbackText
     try {
       const handle = openDb(mod)
@@ -134,7 +134,7 @@ export function createMemoryAdapter({
       return { mode: 'degraded', inject: false, text: fallbackText, source: 'fallback:recent' }
     }
     const source = text === fallbackText ? 'stage2-shadow-empty' : 'stage2-shadow'
-    if (mode === 'shadow') {
+    if (mode === 'shadow' && !/^\s*【/.test(query)) {
       appendShadowRecall({
         mode, source, subject: key, query,
         text: text === fallbackText ? '' : text,

@@ -104,8 +104,8 @@ export function onSessionEvent({ session, event, bridge, defineTool, debugLog })
         windowId: entry.sessionId || entry.key,
         traceId: entry.lastTraceId || '',
         turns: [
-          { index: entry.lastTurnIndex || 0, role: 'user', text: entry.lastUserText || '', ts: entry.lastUserAt || Date.now() },
-          { index: entry.lastTurnIndex || 0, role: 'assistant', text, ts: Date.now() },
+          { index: entry.lastTurnIndex || 0, role: 'user', text: entry.lastUserText || '', ts: entry.lastUserAt || Date.now(), injected: entry.lastUserInjected === true },
+          { index: entry.lastTurnIndex || 0, role: 'assistant', text, ts: Date.now(), injected: entry.currentTurnInjected === true },
         ],
         source: 'qq-turn',
       },

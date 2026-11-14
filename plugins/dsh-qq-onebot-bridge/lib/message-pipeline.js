@@ -655,6 +655,7 @@ export async function onQqMessageInner({ message, bridge, defineTool, debugLog }
     entry.lastTraceId = trace?.id ?? ''
     entry.lastUserText = String(text ?? '')
     entry.lastUserAt = Date.now()
+    entry.lastUserInjected = message.__injected === true || message.__replayed === true
     entry.lastTurnIndex = Number(entry.lastTurnIndex || 0) + 1
     entry.lastTurnAt = Date.now()
     entry.lastInboundMessageId = message.messageId ?? ''

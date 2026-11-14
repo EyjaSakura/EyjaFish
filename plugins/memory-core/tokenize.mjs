@@ -9,9 +9,9 @@ const segmenter = (() => {
   }
 })()
 
-export function buildTokens(input) {
+export function buildWordTokens(input) {
   const text = String(input ?? '').trim()
-  if (text === '') return ''
+  if (text === '') return []
   const words = []
   if (segmenter) {
     try {
@@ -19,10 +19,17 @@ export function buildTokens(input) {
         const word = String(part?.segment ?? '').trim()
         if (word !== '' && /[\p{L}\p{N}]/u.test(word)) words.push(word)
       }
-    } catch { /* fall through to chars */ }
+    } catch { /* fall through */ }
   }
-  const chars = [...text].filter((ch) => /\p{Script=Han}/u.test(ch))
-  return [...new Set([...words, ...chars])].join(' ')
+  return [...new Set(words)]
+}
+
+export function buildCharTokens(input) {
+  return [...new Set([...String(input ?? '')].filter((ch) => /\p{Script=Han}/u.test(ch)))]
+}
+
+export function buildTokens(input) {
+  return [...new Set([...buildWordTokens(input), ...buildCharTokens(input)])].join(' ')
 }
 
 export function hasIcu() {

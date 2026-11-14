@@ -7,7 +7,7 @@ import { join } from 'node:path'
 import {
   openStore, closeStore, addNode, addWindowTurn, setDecision, count,
   searchCandidates, listPending, confirmNode, ingestTurn, migrateLegacy, buildTokens, rankCandidates,
-  validateExtraction, extractWithLLM,
+  validateExtraction, extractWithLLM, isSubstantive, isInternalText, extractStageOneNodes,
 } from '../../memory-core/index.mjs'
 
 function memoryDb() {
@@ -79,6 +79,21 @@ test('memory-core：ingestTurn 写入 window_turns 并幂等去重', () => {
   } finally {
     closeStore(db)
   }
+})
+
+test('memory-core：系统/抖音包装消息不进入记忆节点', () => {
+  assert.equal(isInternalText('【系统】现在是你的自由时间'), true)
+  assert.equal(isInternalText('【抖音私信】来自「倩倩姐」：你好'), true)
+  assert.equal(isSubstantive('【系统】现在是你的自由时间。你可以从这些里选一个去做'), false)
+  const nodes = extractStageOneNodes({
+    subject: 'u:1', windowId: 'w1', traceId: 't1',
+    turns: [
+      { index: 1, role: 'user', text: '【系统】现在是你的自由时间。你可以从这些里选一个去做', injected: true },
+      { index: 2, role: 'user', text: '今天去了沙面岛，人很多' },
+    ],
+  })
+  assert.equal(nodes.filter((n) => n.type === 'event').length, 1)
+  assert.match(nodes.find((n) => n.type === 'event').description, /沙面岛/)
 })
 
 test('memory-core：stage2 排序方向正确，实体可召回', () => {

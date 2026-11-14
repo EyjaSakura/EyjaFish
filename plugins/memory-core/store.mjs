@@ -2,7 +2,7 @@
 import Database from 'better-sqlite3'
 import { existsSync, mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
-import { buildTokens } from './tokenize.mjs'
+import { buildTokens, buildWordTokens, buildCharTokens } from './tokenize.mjs'
 import { extractEntities } from './extract.mjs'
 
 export const SCHEMA_VERSION = 1
@@ -242,18 +242,33 @@ export function enqueue(db, { turnKey, payload }) {
 }
 
 export function searchCandidates(db, query, { subject = null, limit = 20 } = {}) {
-  const tokens = buildTokens(query)
+  const text = String(query ?? '').trim()
+  const STOP = new Set(['的', '了', '吗', '呢', '吧', '啊', '我', '你', '他', '她', '它', '是', '在', '有', '和', '就', '都', '也', '很', '不', '一', '个', '这', '那', '还', '来', '去', '说', '要', '会', '把', '被', '给', '对', '上', '下', '里', '着', '过', '得', '地', '之', '与', '或', '而', '但', '如果', '因为', '所以'])
+  let words = buildWordTokens(text).filter((w) => !STOP.has(w))
+  // Keep a meaningful single noun ("酒") while dropping particles ("的/了").
+  if (words.length === 0 || [...text.replace(/\s/g, '')].length <= 2) words = buildWordTokens(text)
+  const chars = buildCharTokens(text)
   const hits = []
-  if (tokens !== '') {
-    const match = tokens.split(/\s+/).map((t) => `"${t.replace(/"/g, '')}"`).join(' OR ')
+  const runFts = (match) => {
     try {
-      const rows = db.prepare(`SELECT n.id,n.subject,n.description,n.entities_json,n.created_at,n.importance,
+      return db.prepare(`SELECT n.id,n.subject,n.description,n.entities_json,n.created_at,n.importance,
         bm25(nodes_fts) AS bm25
         FROM nodes_fts JOIN nodes n ON n.row_id = nodes_fts.rowid
         WHERE nodes_fts MATCH ? AND n.status='active' ${subject ? 'AND n.subject=?' : ''}
         ORDER BY bm25 LIMIT ?`).all(...(subject ? [match, subject, limit] : [match, limit]))
-      for (const row of rows) hits.push({ ...row, source: 'fts' })
-    } catch { /* FTS query can fail on punctuation; entity path still works */ }
+    } catch { return [] }
+  }
+  if (words.length > 0) {
+    // OR over content words; BM25 ranks multi-word overlap. Single-character
+    // particles were removed above so long sentences cannot match on "的/个".
+    const match = words.map((t) => `"${t.replace(/"/g, '')}"`).join(' OR ')
+    for (const row of runFts(match)) hits.push({ ...row, source: 'fts' })
+  }
+  // Character fallback is only for genuinely short queries (e.g. "累"), not
+  // for long sentences that happen to share a common character.
+  if (hits.length === 0 && chars.length > 0 && [...text.replace(/\s/g, '')].length <= 2) {
+    const match = chars.map((t) => `"${t.replace(/"/g, '')}"`).join(' OR ')
+    for (const row of runFts(match)) hits.push({ ...row, source: 'fts-char' })
   }
   if (subject) {
     const entities = [...new Set([
