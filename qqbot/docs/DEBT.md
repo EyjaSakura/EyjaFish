@@ -94,8 +94,10 @@
 - 数据清洗：91 条系统/抖音包装节点、353 条 legacy 工程事件归档；52 条内部 window_turns 删除
 - 回填：`backfill-events.mjs` 从 window_turns 补回 17 条短消息事件
 - 检索：系统/注入文本不入节点；内容词 OR + BM25，避免单字把任意消息匹配进来
+- 主动消息决策（2026-11-15）：1C 自由活动改 2–4 小时且 dry-run 静默；2D 抖音保持、3C 多人心跳保持、4A 主心跳保持关闭
+- 5A 启动问候：当前 `lastDate` 在 socket 检查前写入，可能吞掉当天；计划改为 socket 就绪后再落日期并重试（未实施）
 - 默认 `MEMORY_MODE=shadow`：stage2 recall 只记录候选，`inject=false`，不改变回复
-- 验证：`test:new` 205、feature 72、CI OK、health HEALTH OK
+- 验证：`test:new` 206、feature 72、CI OK、health HEALTH OK
 - 待办：LLM 抽取评分、narrative/离线巩固、on 模式（stage 2.5/3）
 
 ## P2
@@ -136,7 +138,7 @@
 
 ### 5. functions 覆盖仍低于 lines
 
-- 现状：all-lib 85.00 / 75.00 / 72.53（lines / branches / functions）
+- 现状：all-lib 85.01 / 75.00 / 72.55（lines / branches / functions）
 - 风险：默认回调、错误分支可能没测
 - 验收：functions ≥ 75%，branches ≥ 80%（分批提升，不一次拉满）
 

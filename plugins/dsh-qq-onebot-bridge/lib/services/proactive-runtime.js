@@ -5,6 +5,9 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { pollDouyinInbox as pollDouyinInboxService } from './douyin-inbox.js'
 import { maaNotifyTick as maaNotifyTickService } from './maa-notify.js'
 import { debugLog } from '../core/debug-log.js'
+import { nextActivityGapMinutes } from './activity-gap.js'
+
+export { nextActivityGapMinutes }
 
 export function createProactiveRuntime({
   config,
@@ -93,7 +96,8 @@ export function createProactiveRuntime({
     let st = { nextAt: 0 }
     try { st = JSON.parse(readFileSync(file, 'utf8')) } catch { st = { nextAt: 0 } }
     if (Date.now() < (st.nextAt || 0)) return
-    const gap = 20 + Math.floor(Math.random() * 30)
+    // [activity-1c] 2–4 小时一次，且只在内部活动；不把自由时间的自言自语发到 QQ。
+    const gap = nextActivityGapMinutes()
     st.nextAt = Date.now() + gap * 60_000
     try { writeFileSync(file, JSON.stringify(st), 'utf8') } catch { /* ignore */ }
     const owner = ownerQQ()
@@ -105,7 +109,7 @@ export function createProactiveRuntime({
       'D. 发一条说说（qq_post_qzone）\n' +
       '选一个执行；只做这一件事，不要提这条提示，也不用向主人汇报。'
     const prev = config.injectDryRun
-    config.injectDryRun = false
+    config.injectDryRun = true
     void handleInjection('message', { messageType: 'private', userId: Number(owner), groupId: null, messageId: 'activity-' + Date.now(), text })
       .catch((e) => debugLog('[activity] inject failed: ' + e.message))
       .finally(() => { config.injectDryRun = prev })
