@@ -24,26 +24,49 @@ export function createProactiveRuntime({
   flushDeferred,
   sendImageTo,
 }) {
-  function maybeStartupGreet() {
+  let greetScheduled = false
+
+  function localDay() {
+    const d = new Date()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${d.getFullYear()}-${m}-${day}`
+  }
+
+  function maybeStartupGreet(attempt = 0) {
     const owner = ownerQQ()
     if (!owner) return
     const file = join(memoryDir, '..', 'qq-startup-greet.json')
-    const today = new Date().toISOString().slice(0, 10)
-    let st = /** @type {{ lastDate?: string }} */ ({})
-    try { st = JSON.parse(readFileSync(file, 'utf8')) } catch { st = /** @type {{ lastDate?: string }} */ ({}) }
-    if (st.lastDate === today) return
-    st.lastDate = today
-    try { writeFileSync(file, JSON.stringify(st), 'utf8') } catch { }
+    const today = localDay()
+    let st = /** @type {{ lastDate?: string, greetedAt?: number }} */ ({})
+    try { st = JSON.parse(readFileSync(file, 'utf8')) } catch { st = /** @type {{ lastDate?: string, greetedAt?: number }} */ ({}) }
+    if (st.lastDate === today || greetScheduled) return
     const socket = server.currentSocket()
-    if (!socket) return
+    if (!socket) {
+      // Do not consume today's greeting while QQ/OneBot is not ready.
+      if (attempt < 20) setTimeout(() => maybeStartupGreet(attempt + 1), 30_000)
+      debugLog(`[startup-greet] waiting for socket (attempt ${attempt + 1}/21)`)
+      return
+    }
+    greetScheduled = true
     const text = '【系统】你刚启动完成，给主人发一句问好的话：一句，自然点，不要提系统、不要解释。'
     setTimeout(() => {
+      const liveSocket = server.currentSocket()
+      if (!liveSocket) {
+        greetScheduled = false
+        if (attempt < 20) setTimeout(() => maybeStartupGreet(attempt + 1), 30_000)
+        debugLog('[startup-greet] socket disappeared before send; retrying')
+        return
+      }
+      st.lastDate = today
+      st.greetedAt = Date.now()
+      try { writeFileSync(file, JSON.stringify(st), 'utf8') } catch { /* ignore */ }
       void onQqMessage({
-        bot: server.currentSocket(), messageType: 'private', userId: Number(owner),
+        bot: liveSocket, messageType: 'private', userId: Number(owner),
         groupId: null, messageId: 'greet-' + Date.now(), text,
       }).catch((e) => debugLog('[startup-greet] failed: ' + e.message))
+      debugLog('[startup-greet] queued')
     }, 3000)
-    debugLog('[startup-greet] queued')
   }
 
   function maybeDouyinBrowse() {
