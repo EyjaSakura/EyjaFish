@@ -11,6 +11,9 @@
 !/qqbot/
 /qqbot/*
 !/qqbot/scripts/
+!/qqbot/panel/
+/qqbot/panel/*
+!/qqbot/panel/server.mjs
 !/qqbot/start-stack.ps1
 !/qqbot/stop-stack.ps1
 !/qqbot/docs/

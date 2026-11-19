@@ -9,6 +9,37 @@ import { nextActivityGapMinutes } from './activity-gap.js'
 
 export { nextActivityGapMinutes }
 
+export const GREET_WHITELIST_FILE = 'D:\\DSH\\qqbot\\data\\startup-greet-whitelist.json'
+export const DEFAULT_GREET_WHITELIST = {
+  owner: { id: '1815442184', name: '主人', locked: true },
+  friends: [{ id: '2930661826', name: '倩倩姐', enabled: true }],
+  policy: {
+    owner: { hourFrom: 8, hourTo: 24, maxPerDay: 1 },
+    friend: { hourFrom: 9, hourTo: 22, maxPerDay: 1, quietAfterUserMinutes: 120 },
+  },
+}
+
+function readGreetWhitelist(owner) {
+  let data = null
+  try { data = JSON.parse(readFileSync(GREET_WHITELIST_FILE, 'utf8').replace(/^\uFEFF/, '')) } catch { data = null }
+  if (!data || typeof data !== 'object') data = JSON.parse(JSON.stringify(DEFAULT_GREET_WHITELIST))
+  const ownerId = String(owner || data.owner?.id || DEFAULT_GREET_WHITELIST.owner.id)
+  data.owner = {
+    id: ownerId,
+    name: String(data.owner?.name || DEFAULT_GREET_WHITELIST.owner.name),
+    locked: true,
+  }
+  data.friends = Array.isArray(data.friends)
+    ? data.friends.filter((f) => f && /^\d{5,12}$/.test(String(f.id))).map((f) => ({
+        id: String(f.id),
+        name: String(f.name || f.id),
+        enabled: f.enabled !== false,
+      }))
+    : []
+  data.policy = { ...JSON.parse(JSON.stringify(DEFAULT_GREET_WHITELIST.policy)), ...(data.policy || {}) }
+  return data
+}
+
 export function createProactiveRuntime({
   config,
   memoryDir,
@@ -38,9 +69,33 @@ export function createProactiveRuntime({
     if (!owner) return
     const file = join(memoryDir, '..', 'qq-startup-greet.json')
     const today = localDay()
-    let st = /** @type {{ lastDate?: string, greetedAt?: number }} */ ({})
-    try { st = JSON.parse(readFileSync(file, 'utf8')) } catch { st = /** @type {{ lastDate?: string, greetedAt?: number }} */ ({}) }
-    if (st.lastDate === today || greetScheduled) return
+    let st = /** @type {{ lastDate?: string, greetedAt?: number, friends?: Record<string,string> }} */ ({})
+    try { st = JSON.parse(readFileSync(file, 'utf8')) } catch { st = /** @type {{ lastDate?: string, greetedAt?: number, friends?: Record<string,string> }} */ ({}) }
+    if (greetScheduled) return
+    const whitelist = readGreetWhitelist(owner)
+    const hour = new Date().getHours()
+    const recipients = []
+    if (st.lastDate !== today && hour >= Number(whitelist.policy.owner.hourFrom ?? 0) && hour < Number(whitelist.policy.owner.hourTo ?? 24)) {
+      recipients.push({
+        id: owner,
+        name: whitelist.owner.name,
+        level: 'owner',
+        text: '【系统】你刚启动完成，给主人发一句问好的话：一句，自然点，不要提系统、不要解释。',
+      })
+    }
+    for (const friend of whitelist.friends) {
+      if (!friend.enabled || friend.id === owner) continue
+      const already = st.friends?.[friend.id]
+      if (already === today) continue
+      if (hour < Number(whitelist.policy.friend.hourFrom ?? 9) || hour >= Number(whitelist.policy.friend.hourTo ?? 22)) continue
+      recipients.push({
+        id: friend.id,
+        name: friend.name,
+        level: 'friend',
+        text: `【系统】给朋友「${friend.name}」发一句轻量问候：一句，自然点，不超过 30 字；不要提记忆、关系、主人、系统，不要追问，不要像定时汇报。`,
+      })
+    }
+    if (recipients.length === 0) return
     const socket = server.currentSocket()
     if (!socket) {
       // Do not consume today's greeting while QQ/OneBot is not ready.
@@ -49,24 +104,37 @@ export function createProactiveRuntime({
       return
     }
     greetScheduled = true
-    const text = '【系统】你刚启动完成，给主人发一句问好的话：一句，自然点，不要提系统、不要解释。'
-    setTimeout(() => {
-      const liveSocket = server.currentSocket()
-      if (!liveSocket) {
-        greetScheduled = false
-        if (attempt < 20) setTimeout(() => maybeStartupGreet(attempt + 1), 30_000)
-        debugLog('[startup-greet] socket disappeared before send; retrying')
-        return
-      }
-      st.lastDate = today
-      st.greetedAt = Date.now()
-      try { writeFileSync(file, JSON.stringify(st), 'utf8') } catch { /* ignore */ }
-      void onQqMessage({
-        bot: liveSocket, messageType: 'private', userId: Number(owner),
-        groupId: null, messageId: 'greet-' + Date.now(), text,
-      }).catch((e) => debugLog('[startup-greet] failed: ' + e.message))
-      debugLog('[startup-greet] queued')
-    }, 3000)
+    recipients.forEach((recipient, index) => {
+      setTimeout(() => {
+        const liveSocket = server.currentSocket()
+        if (!liveSocket) {
+          greetScheduled = false
+          if (attempt < 20) setTimeout(() => maybeStartupGreet(attempt + 1), 30_000)
+          debugLog('[startup-greet] socket disappeared before send; retrying')
+          return
+        }
+        // Record only after the socket exists; per-recipient so a friend never
+        // consumes the owner's daily greeting (or vice versa).
+        let current = /** @type {{ lastDate?: string, greetedAt?: number, friends?: Record<string,string> }} */ ({})
+        try { current = JSON.parse(readFileSync(file, 'utf8')) } catch { current = {} }
+        if (recipient.level === 'owner') current.lastDate = today
+        else {
+          current.friends ||= {}
+          current.friends[recipient.id] = today
+        }
+        current.greetedAt = Date.now()
+        try { writeFileSync(file, JSON.stringify(current), 'utf8') } catch { /* ignore */ }
+        void onQqMessage({
+          bot: liveSocket,
+          messageType: 'private',
+          userId: Number(recipient.id),
+          groupId: null,
+          messageId: `greet-${recipient.level}-${recipient.id}-` + Date.now(),
+          text: recipient.text,
+        }).catch((e) => debugLog(`[startup-greet] ${recipient.level} failed: ` + e.message))
+        debugLog(`[startup-greet] queued ${recipient.level} ${recipient.id}`)
+      }, 3000 + index * 3000)
+    })
   }
 
   function maybeDouyinBrowse() {
