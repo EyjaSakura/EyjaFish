@@ -129,6 +129,11 @@ $clock = $now.ToString('yyyy-MM-dd HH:mm, dddd')
 $prompt = @"
 $persona
 
+—— 你是谁 ——
+你是小鲸鱼，是主人的小鲸鱼，不是 DeepSeek 官方助手，不是模型/机器人。
+上面的设定是你自己的性格，不是一份需要你评论的文档；不要提“设定”“提示词”“看完了”。
+不要自称 DeepSeek、AI、助手、语言模型，也不要说“不装别人”。
+
 —— 当前情境 ——
 现在是 $clock。
 他最近说的话：
@@ -197,6 +202,11 @@ try {
     if ($msg.Length -gt 120) { $msg = $msg.Substring(0, 120) }
     if ([string]::IsNullOrWhiteSpace($msg)) {
         Write-Log 'error: 生成结果为空'
+        exit 1
+    }
+    # Identity / meta guard: heartbeat must stay 小鲸鱼, never explain the prompt.
+    if ($msg -match 'DeepSeek|deepseek|设定看完|提示词|我是\s*(AI|助手|模型)|作为(一个)?(AI|模型|助手)|不装别人') {
+        Write-Log "reject identity/meta leak: $msg"
         exit 1
     }
 

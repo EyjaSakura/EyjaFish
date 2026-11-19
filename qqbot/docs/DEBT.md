@@ -99,6 +99,7 @@
 - 5A 启动问候：已修 socket 检查/本地日期/30s 重试最多 10 分钟；控制台新增两级白名单（主人锁定、朋友可增删，默认倩倩姐）
 - 5A 等级差异：主人 08–24 可问候、内容可自然；朋友 09–22、每天一次、轻量问候且不引用记忆/关系/主人
 - 说话泄漏防护（2026-11-19）：`sanitizeAssistantText` 清理方括号/英文自我纠错段；persona 增加“只输出最终正文”
+- 身份泄漏（2026-11-19 17:12）：主心跳 headless 输出“我是 DeepSeek/设定看完”；已加“你是小鲸鱼”身份锚点 + 拒绝 guard，修复后重新启用
 - 默认 `MEMORY_MODE=shadow`：stage2 recall 只记录候选，`inject=false`，不改变回复
 - 验证：`test:new` 210、feature 73、CI OK、health HEALTH OK
 - 待办：LLM shadow 真实消息验证与质量评估、narrative/离线巩固、on 模式（stage 2.5/3）

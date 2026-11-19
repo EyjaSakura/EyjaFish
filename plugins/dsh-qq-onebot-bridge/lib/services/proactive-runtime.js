@@ -80,7 +80,7 @@ export function createProactiveRuntime({
         id: owner,
         name: whitelist.owner.name,
         level: 'owner',
-        text: '【系统】你刚启动完成，给主人发一句问好的话：一句，自然点，不要提系统、不要解释。',
+        text: '【系统】你是小鲸鱼，不是 DeepSeek/AI/助手；给主人发一句问好的话：一句，自然点，不要提系统、设定、提示词，不要解释。',
       })
     }
     for (const friend of whitelist.friends) {
@@ -92,7 +92,7 @@ export function createProactiveRuntime({
         id: friend.id,
         name: friend.name,
         level: 'friend',
-        text: `【系统】给朋友「${friend.name}」发一句轻量问候：一句，自然点，不超过 30 字；不要提记忆、关系、主人、系统，不要追问，不要像定时汇报。`,
+        text: `【系统】你是小鲸鱼，不是 DeepSeek/AI/助手；给朋友「${friend.name}」发一句轻量问候：一句，自然点，不超过 30 字；不要提记忆、关系、主人、系统、设定、提示词，不要追问，不要像定时汇报。`,
       })
     }
     if (recipients.length === 0) return
