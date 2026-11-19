@@ -1,11 +1,13 @@
 // 桥接模块共用的纯函数（从 bridge.js 顶层 helper 复制）
 // 之后 bridge.js 也可以改为从这里 import，避免两份实现。
+import { sanitizeAssistantText } from './services/reasoning-leak.js'
 
 export function assistantText(event) {
-  return event.data.message.content
+  const text = event.data.message.content
     .filter((block) => block && block.type === 'text')
     .map((block) => block.text)
     .join('')
+  return sanitizeAssistantText(text)
 }
 
 export function splitSegments(segments, limit) {

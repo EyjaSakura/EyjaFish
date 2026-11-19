@@ -98,8 +98,9 @@
 - 4A 主心跳：已修复并启用 `DSH-QQBot-Heartbeat`（每 20 分钟检查；脚本节流为 2–4 小时、最多 6 条/日，-DryRun 验证；状态 Ready）
 - 5A 启动问候：已修 socket 检查/本地日期/30s 重试最多 10 分钟；控制台新增两级白名单（主人锁定、朋友可增删，默认倩倩姐）
 - 5A 等级差异：主人 08–24 可问候、内容可自然；朋友 09–22、每天一次、轻量问候且不引用记忆/关系/主人
+- 说话泄漏防护（2026-11-19）：`sanitizeAssistantText` 清理方括号/英文自我纠错段；persona 增加“只输出最终正文”
 - 默认 `MEMORY_MODE=shadow`：stage2 recall 只记录候选，`inject=false`，不改变回复
-- 验证：`test:new` 208、feature 73、CI OK、health HEALTH OK
+- 验证：`test:new` 210、feature 73、CI OK、health HEALTH OK
 - 待办：LLM shadow 真实消息验证与质量评估、narrative/离线巩固、on 模式（stage 2.5/3）
 
 ## P2
@@ -140,7 +141,7 @@
 
 ### 5. functions 覆盖仍低于 lines
 
-- 现状：all-lib 85.01 / 75.00 / 72.55（lines / branches / functions）
+- 现状：all-lib 85.05 / 75.01 / 72.63（lines / branches / functions）
 - 风险：默认回调、错误分支可能没测
 - 验收：functions ≥ 75%，branches ≥ 80%（分批提升，不一次拉满）
 
