@@ -47,10 +47,20 @@ function Write-Log([string]$m) {
 }
 
 function Read-State {
+    $stateObj = $null
     if (Test-Path $CFG.StateFile) {
-        try { return Get-Content $CFG.StateFile -Raw -Encoding UTF8 | ConvertFrom-Json } catch { }
+        try { $stateObj = Get-Content $CFG.StateFile -Raw -Encoding UTF8 | ConvertFrom-Json } catch { $stateObj = $null }
     }
-    return [pscustomobject]@{ date = ''; count = 0; lastSentAt = 0; recent = @() }
+    if (-not $stateObj) {
+        $stateObj = [pscustomobject]@{ date = ''; count = 0; lastSentAt = 0; nextGapMinutes = 0; recent = @() }
+    }
+    foreach ($field in @('date', 'count', 'lastSentAt', 'nextGapMinutes', 'recent')) {
+        if (-not $stateObj.PSObject.Properties[$field]) {
+            $default = if ($field -eq 'recent') { @() } elseif ($field -eq 'date') { '' } else { 0 }
+            $stateObj | Add-Member -NotePropertyName $field -NotePropertyValue $default
+        }
+    }
+    return $stateObj
 }
 function Save-State($s) {
     $s | ConvertTo-Json -Depth 4 | Set-Content -Path $CFG.StateFile -Encoding UTF8
