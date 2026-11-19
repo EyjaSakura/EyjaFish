@@ -32,13 +32,15 @@ export function writeUsage(usage, file = DEFAULT_USAGE_FILE) {
 
 export function pickKnowledge({
   category = 'history',
+  categories = null,
   root = DEFAULT_KNOWLEDGE_ROOT,
   usageFile = DEFAULT_USAGE_FILE,
   random = Math.random,
   now = Date.now(),
   record = true,
 } = {}) {
-  const rows = loadKnowledge(category, root)
+  const wanted = Array.isArray(categories) && categories.length > 0 ? categories : [category]
+  const rows = wanted.flatMap((name) => loadKnowledge(name, root))
   if (rows.length === 0) return null
   const usage = readUsage(usageFile)
   const scored = rows.map((row) => {

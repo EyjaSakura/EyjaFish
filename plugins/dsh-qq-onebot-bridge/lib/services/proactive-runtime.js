@@ -77,8 +77,8 @@ export function createProactiveRuntime({
     const hour = new Date().getHours()
     const recipients = []
     if (st.lastDate !== today && hour >= Number(whitelist.policy.owner.hourFrom ?? 0) && hour < Number(whitelist.policy.owner.hourTo ?? 24)) {
-      const fact = pickKnowledge({ category: 'history' })
-      const share = fact ? `\n\n—— 可以分享的小知识 ——\n${fact.text}\n本次必须用它当主要内容，用自己的话讲，不要照读，不要提知识库、来源。` : ''
+      const fact = pickKnowledge({ categories: ['three-kingdoms', 'history'] })
+      const share = fact ? `\n\n—— 可以分享的小知识 ——\n内容：${fact.text}\n类型：${fact.kind || '历史'}\n本次必须用它当主要内容，用自己的话讲；如果是演义要说明是演义，不要照读，不要提知识库、来源。` : ''
       recipients.push({
         id: owner,
         name: whitelist.owner.name,
@@ -91,8 +91,8 @@ export function createProactiveRuntime({
       const already = st.friends?.[friend.id]
       if (already === today) continue
       if (hour < Number(whitelist.policy.friend.hourFrom ?? 9) || hour >= Number(whitelist.policy.friend.hourTo ?? 22)) continue
-      const fact = pickKnowledge({ category: 'history' })
-      const share = fact ? `\n\n—— 可以分享的小知识 ——\n${fact.text}\n用一句轻量的话分享它，不要照读，不要提知识库、来源。` : ''
+      const fact = pickKnowledge({ categories: ['three-kingdoms', 'history'] })
+      const share = fact ? `\n\n—— 可以分享的小知识 ——\n内容：${fact.text}\n类型：${fact.kind || '历史'}\n用一句轻量的话分享它；如果是演义要说明是演义，不要照读，不要提知识库、来源。` : ''
       recipients.push({
         id: friend.id,
         name: friend.name,

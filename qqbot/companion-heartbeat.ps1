@@ -138,10 +138,11 @@ if ($recentSent.Count -gt 0) { $recentLines += '（你最近主动说过：' + (
 $clock = $now.ToString('yyyy-MM-dd HH:mm, dddd')
 $knowledge = $null
 try {
-    $knowledgeJson = (& node 'D:\DSH\qqbot\scripts\knowledge-pick.mjs' --category history --json 2>$null | Out-String).Trim()
+    $knowledgeJson = (& node 'D:\DSH\qqbot\scripts\knowledge-pick.mjs' --categories three-kingdoms,history --json 2>$null | Out-String).Trim()
     if ($knowledgeJson) { $knowledge = $knowledgeJson | ConvertFrom-Json }
 } catch { $knowledge = $null }
 $knowledgeLine = if ($knowledge) { $knowledge.text } else { '' }
+$knowledgeKind = if ($knowledge -and $knowledge.kind) { $knowledge.kind } else { '历史' }
 $prompt = @"
 $persona
 
@@ -151,7 +152,9 @@ $persona
 不要自称 DeepSeek、AI、助手、语言模型，也不要说“不装别人”。
 
 —— 可以分享的小知识 ——
-$knowledgeLine
+内容：$knowledgeLine
+类型：$knowledgeKind
+如果类型是“演义”，要明确说这是演义；如果类型是“正史”，可以当史实讲；如果类型是“区别”，要讲清演义和正史的不同。
 
 —— 当前情境 ——
 现在是 $clock。
