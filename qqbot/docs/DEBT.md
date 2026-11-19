@@ -145,7 +145,7 @@
 
 ### 5. functions 覆盖仍低于 lines
 
-- 现状：all-lib 85.11 / 74.95 / 72.78（lines / branches / functions）
+- 现状：all-lib 85.11 / 74.93 / 72.78（lines / branches / functions）
 - 风险：默认回调、错误分支可能没测
 - 验收：functions ≥ 75%，branches ≥ 80%（分批提升，不一次拉满）
 
