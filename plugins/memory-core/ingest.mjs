@@ -31,7 +31,9 @@ export function ingestTurn(db, payload = {}) {
         })
       }
     }
-    const nodes = extractStageOneNodes({ subject, windowId, traceId, turns })
+    const nodes = Array.isArray(payload.nodes)
+      ? payload.nodes
+      : extractStageOneNodes({ subject, windowId, traceId, turns })
     const ids = []
     for (const node of nodes) {
       const result = addNode(db, node)

@@ -1,11 +1,20 @@
 // feature-memory stage 1 adapter.
 // Owns modes, status.json, notifications, and the host seam. SQLite/extraction
 // stay behind memory-core; this file only calls its public API.
+import { existsSync, readFileSync } from 'node:fs'
 import { DEFAULT_STATUS_FILE, normalizeMode, readStatus, today, writeStatus } from './status.js'
 import { notifyOwner as realNotifyOwner } from './notify.js'
 import { appendShadowRecall, DEFAULT_SHADOW_LOG } from './shadow-log.mjs'
 
 const CORE_URL = new URL('../../memory-core/index.mjs', import.meta.url).href
+const DEFAULT_LLM_KEY_FILE = 'D:\\DSH\\qqbot\\data\\memory\\deepseek-key.txt'
+
+function readKeyFile(file) {
+  try {
+    if (!existsSync(file)) return ''
+    return readFileSync(file, 'utf8').replace(/^\uFEFF/, '').trim()
+  } catch { return '' }
+}
 
 /**
  * @param {{
@@ -15,7 +24,10 @@ const CORE_URL = new URL('../../memory-core/index.mjs', import.meta.url).href
  *   now?: () => number,
  *   env?: any,
  *   debugLog?: (message: string) => void,
- *   shadowLogFile?: string
+ *   shadowLogFile?: string,
+ *   llmEnabled?: boolean,
+ *   llmApiKey?: string,
+ *   llmKeyFile?: string
  * }} [options]
  */
 export function createMemoryAdapter({
@@ -26,6 +38,9 @@ export function createMemoryAdapter({
   env = process.env,
   debugLog = () => {},
   shadowLogFile = DEFAULT_SHADOW_LOG,
+  llmEnabled = String(env.MEMORY_LLM_EXTRACT ?? '') === '1',
+  llmApiKey = '',
+  llmKeyFile = DEFAULT_LLM_KEY_FILE,
 } = {}) {
   let db = null
   let coreModule = null
@@ -150,6 +165,7 @@ export function createMemoryAdapter({
     }
   }
 
+  /** @param {any} [payload] */
   async function ingest(payload = {}) {
     const status = currentStatus()
     if (status.mode === 'off' || status.mode === 'degraded') {
@@ -171,8 +187,32 @@ export function createMemoryAdapter({
       if (!handle || typeof mod.ingestTurn !== 'function') {
         return { accepted: false, mode: status.mode, source: 'stage0-noop', windowId: payload.windowId ?? '' }
       }
-      const result = mod.ingestTurn(handle, corePayload)
-      return { ...result, mode: status.mode, source: 'stage2' }
+      let activePayload = corePayload
+      let llmSource = 'off'
+      const turns = Array.isArray(corePayload.turns) ? corePayload.turns : []
+      const hasRealUser = turns.some((turn) => turn?.role === 'user' && turn.injected !== true && mod.isMemoryEvent?.(turn.text))
+      const key = llmApiKey || readKeyFile(llmKeyFile)
+      if (llmEnabled && key && hasRealUser && typeof mod.extractWithDeepSeek === 'function') {
+        try {
+          const extracted = await mod.extractWithDeepSeek({
+            prompt: mod.buildExtractionPrompt({ subject: corePayload.subject, turns }),
+            apiKey: key,
+            subject: corePayload.subject,
+            windowId: corePayload.windowId,
+            traceId: corePayload.traceId,
+            turns,
+          })
+          llmSource = extracted.source
+          if (extracted.source === 'llm' && extracted.nodes.length > 0) {
+            activePayload = { ...corePayload, nodes: extracted.nodes }
+          }
+        } catch (error) {
+          llmSource = 'fallback'
+          debugLog(`[memory] llm extract failed: ${error?.message ?? error}`)
+        }
+      }
+      const result = mod.ingestTurn(handle, activePayload)
+      return { ...result, mode: status.mode, source: llmSource === 'llm' ? 'stage2-llm' : 'stage2', llm: llmSource }
     } catch (error) {
       await degrade(error?.message ?? String(error), bridge)
       return { accepted: false, mode: 'degraded', source: 'fallback', error: String(error?.message ?? error) }

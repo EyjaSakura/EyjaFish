@@ -99,6 +99,45 @@ test('memory adapter：degraded 恢复回 shadow 并通知', async () => {
   }
 })
 
+test('memory adapter：LLM 抽取只在 shadow 写库，仍不注入', async () => {
+  const { dir, file } = tempStatus('shadow')
+  const db = core.openStore(':memory:')
+  try {
+    const adapter = createMemoryAdapter({
+      statusFile: file,
+      shadowLogFile: join(dir, 'shadow-recall.jsonl'),
+      llmEnabled: true,
+      llmApiKey: 'test-key',
+      loadCore: async () => ({
+        ...core,
+        DEFAULT_DB: ':memory:',
+        openStore: () => db,
+        extractWithDeepSeek: async () => ({
+          source: 'llm',
+          nodes: [{
+            id: 'llm-1', type: 'feeling', subject: 'u:1',
+            description: '用户觉得猪脚饭一般', importance: 0.4,
+            confidence: 0.8, source: 'user_message', status: 'active',
+            dedup_key: 'llm:1', owner_confirmed: 1,
+          }],
+        }),
+      }),
+      notify: async () => {},
+    })
+    const result = await adapter.ingest({
+      subject: 'u:1', windowId: 'w1', traceId: 't1',
+      turns: [{ index: 1, role: 'user', text: '猪脚饭一般', ts: 1 }],
+    })
+    assert.equal(result.source, 'stage2-llm')
+    assert.equal(core.count(db, 'nodes'), 1)
+    const recall = await adapter.recall({ bridge: {}, key: 'u:1', fallbackText: 'OLD', message: { text: '猪脚饭' } })
+    assert.equal(recall.inject, false)
+  } finally {
+    core.closeStore(db)
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
 test('memory adapter：shadow recall 写入 shadow-recall.jsonl', async () => {
   const { dir, file } = tempStatus('shadow')
   try {

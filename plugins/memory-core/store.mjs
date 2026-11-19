@@ -245,8 +245,9 @@ export function searchCandidates(db, query, { subject = null, limit = 20 } = {})
   const text = String(query ?? '').trim()
   const STOP = new Set(['的', '了', '吗', '呢', '吧', '啊', '我', '你', '他', '她', '它', '是', '在', '有', '和', '就', '都', '也', '很', '不', '一', '个', '这', '那', '还', '来', '去', '说', '要', '会', '把', '被', '给', '对', '上', '下', '里', '着', '过', '得', '地', '之', '与', '或', '而', '但', '如果', '因为', '所以'])
   let words = buildWordTokens(text).filter((w) => !STOP.has(w))
-  // Keep a meaningful single noun ("酒") while dropping particles ("的/了").
-  if (words.length === 0 || [...text.replace(/\s/g, '')].length <= 2) words = buildWordTokens(text)
+  // All-stopword queries ("有的有的") must stay empty. Only very short
+  // queries get the character fallback; long ones must not match on 的/个.
+  if (words.length === 0 && [...text.replace(/\s/g, '')].length <= 2) words = buildWordTokens(text)
   const chars = buildCharTokens(text)
   const hits = []
   const runFts = (match) => {
@@ -299,6 +300,25 @@ export function confirmNode(db, id, approve = true) {
   db.prepare(`UPDATE nodes SET status=?, owner_confirmed=? WHERE id=?`)
     .run(approve ? 'active' : 'archived', approve ? 1 : 0, String(id))
   return { ok: true, id: String(id), status: approve ? 'active' : 'archived' }
+}
+
+export function dedupeActiveNodes(db, { dryRun = false } = {}) {
+  const groups = db.prepare(`SELECT subject,description,COUNT(*) n FROM nodes
+    WHERE status='active' GROUP BY subject,description HAVING n>1`).all()
+  let archived = 0
+  for (const group of groups) {
+    const rows = db.prepare(`SELECT id,access_count FROM nodes
+      WHERE status='active' AND subject=? AND description=? ORDER BY access_count DESC, created_at ASC`).all(group.subject, group.description)
+    const keep = rows[0]
+    const duplicates = rows.slice(1)
+    if (dryRun) { archived += duplicates.length; continue }
+    const stmt = db.prepare(`UPDATE nodes SET status='archived', superseded_by=? WHERE id=?`)
+    for (const row of duplicates) {
+      stmt.run(`dedupe:${keep.id}`, row.id)
+      archived += 1
+    }
+  }
+  return { groups: groups.length, archived }
 }
 
 export function count(db, table) {

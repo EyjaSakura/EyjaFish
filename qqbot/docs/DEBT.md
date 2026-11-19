@@ -50,7 +50,7 @@
 
 ### 2d. feature 包本地单测已覆盖 14/14
 
-- 现状：14 个 feature 包中，14 个 feature 均已有本地单测（72 项，覆盖率 40.03 / 64.53 / 23.75）；commands 已补 /help 行为测试
+- 现状：14 个 feature 包中，14 个 feature 均已有本地单测（73 项，覆盖率 40.42 / 64.72 / 24.33）；commands 已补 /help 行为测试
 - 已加：`scripts/test-features.mjs` + CI `feature tests` 步骤
 - 风险：其余 feature 的业务分支主要靠手测/线上暴露
 - 验收：每个 feature 至少一个可独立跑的单测；CI 覆盖全部 feature
@@ -86,19 +86,19 @@
 - 数据迁移：facts 21 + events 373 → 394 nodes；备份在 `backups\memory-v2-before-stage1-20261112-174908`
 - 写入：window_turns 幂等、队列、turn_decisions、FTS5 双索引、实体索引、pending/confirm、低风险 supersede
 - 排序：BM25+实体+recency+importance，shadow 候选注入=false；memory_search/timeline 接新库
-- 抽取：确定性 event + 显式 fact（记住/喜欢/讨厌/答应/端口）；`llm-extract.mjs` 接口/校验/回退已备，未启用模型调用
+- 抽取：确定性 event + 显式 fact；`deepseek-flash` LLM 抽取已接 shadow（`MEMORY_LLM_EXTRACT=1`，key 本地 data\memory\deepseek-key.txt，不注入），失败回退规则
 - 观测：`bin/shadow-report.mjs` 生成日报（模式/节点/窗口/队列/dead/pending/recall 统计）
 - 候选日志：`data/memory/shadow-recall.jsonl`（query/候选文本/来源，5MB 轮转）
 - 定时：Windows 任务 `DSH-QQBot-Memory-ShadowReport` 每日 23:50 生成报告
 - 探针：`probes.mjs` 覆盖单字、BM25 方向、实体、幂等、pending、空值
 - 数据清洗：91 条系统/抖音包装节点、353 条 legacy 工程事件归档；52 条内部 window_turns 删除
 - 回填：`backfill-events.mjs` 从 window_turns 补回 17 条短消息事件
-- 检索：系统/注入文本不入节点；内容词 OR + BM25，避免单字把任意消息匹配进来
+- 检索：系统/注入文本不入节点；内容词 OR + BM25；全停用词查询直接空；active 完全相同内容去重
 - 主动消息决策（2026-11-15）：1C 自由活动改 2–4 小时且 dry-run 静默；2D 抖音保持、3C 多人心跳保持、4A 主心跳保持关闭
 - 5A 启动问候：当前 `lastDate` 在 socket 检查前写入，可能吞掉当天；计划改为 socket 就绪后再落日期并重试（未实施）
 - 默认 `MEMORY_MODE=shadow`：stage2 recall 只记录候选，`inject=false`，不改变回复
-- 验证：`test:new` 206、feature 72、CI OK、health HEALTH OK
-- 待办：LLM 抽取评分、narrative/离线巩固、on 模式（stage 2.5/3）
+- 验证：`test:new` 208、feature 73、CI OK、health HEALTH OK
+- 待办：LLM shadow 真实消息验证与质量评估、narrative/离线巩固、on 模式（stage 2.5/3）
 
 ## P2
 

@@ -7,6 +7,8 @@ param([switch]$Boot, [switch]$NoBrowser)
 $ErrorActionPreference = 'Continue'
 $Root   = 'D:\DSH\qqbot'
 $LogDir = Join-Path $Root 'logs'
+# Stage 1.5: shadow-only LLM extraction (key is read from data\memory\deepseek-key.txt).
+$env:MEMORY_LLM_EXTRACT = '1'
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
 $Log = Join-Path $LogDir 'start-stack.log'
 

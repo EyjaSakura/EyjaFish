@@ -7,7 +7,7 @@ import { join } from 'node:path'
 import {
   openStore, closeStore, addNode, addWindowTurn, setDecision, count,
   searchCandidates, listPending, confirmNode, ingestTurn, migrateLegacy, buildTokens, rankCandidates,
-  validateExtraction, extractWithLLM, isSubstantive, isInternalText, extractStageOneNodes,
+  validateExtraction, extractWithLLM, isSubstantive, isInternalText, extractStageOneNodes, dedupeActiveNodes,
 } from '../../memory-core/index.mjs'
 
 function memoryDb() {
@@ -23,6 +23,17 @@ test('memory-core：双索引包含单字', () => {
   assert.equal(buildTokens(null), '')
   assert.equal(buildTokens(undefined), '')
   assert.equal(buildTokens(''), '')
+})
+
+test('memory-core：全停用词查询不退化召回', () => {
+  const db = memoryDb()
+  try {
+    addNode(db, { id: 'stop-1', type: 'event', subject: 'u:1', description: '不过我不太喜欢泡菜', owner_confirmed: 1 })
+    assert.deepEqual(searchCandidates(db, '有的有的', { subject: 'u:1' }), [])
+    assert.deepEqual(searchCandidates(db, '的', { subject: 'u:1' }), [])
+  } finally {
+    closeStore(db)
+  }
 })
 
 test('memory-core：raw_quote=null 可写入，FTS 单字与实体可召回', () => {
@@ -107,6 +118,20 @@ test('memory-core：stage2 排序方向正确，实体可召回', () => {
     assert.equal(ranked[0].id, 'A')
     const entity = rankCandidates(db, { subject: 'u:1', query: '倩倩姐', limit: 3 })
     assert.ok(entity.some((x) => x.id === 'D'))
+  } finally {
+    closeStore(db)
+  }
+})
+
+test('memory-core：active 完全相同内容去重', () => {
+  const db = memoryDb()
+  try {
+    addNode(db, { id: 'd1', type: 'event', subject: 'u:1', description: '重复内容', owner_confirmed: 1 })
+    addNode(db, { id: 'd2', type: 'event', subject: 'u:1', description: '重复内容', owner_confirmed: 1 })
+    assert.equal(count(db, 'nodes'), 2)
+    const result = dedupeActiveNodes(db)
+    assert.equal(result.archived, 1)
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM nodes WHERE status='active'").get().n, 1)
   } finally {
     closeStore(db)
   }
