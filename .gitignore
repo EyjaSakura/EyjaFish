@@ -14,6 +14,9 @@
 !/qqbot/panel/
 /qqbot/panel/*
 !/qqbot/panel/server.mjs
+!/qqbot/companion-heartbeat.ps1
+!/qqbot/companion-heartbeat.vbs
+!/qqbot/companion-heartbeat-multi.ps1
 !/qqbot/start-stack.ps1
 !/qqbot/stop-stack.ps1
 !/qqbot/docs/

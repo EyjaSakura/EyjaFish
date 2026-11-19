@@ -95,7 +95,7 @@
 - 回填：`backfill-events.mjs` 从 window_turns 补回 17 条短消息事件
 - 检索：系统/注入文本不入节点；内容词 OR + BM25；全停用词查询直接空；active 完全相同内容去重
 - 主动消息决策（2026-11-15）：1C 自由活动改 2–4 小时且 dry-run 静默；2D 抖音保持、3C 多人心跳保持
-- 4A 主心跳：已修复并启用 `DSH-QQBot-Heartbeat`（每 20 分钟，脚本已用 -DryRun 验证；状态 Ready）
+- 4A 主心跳：已修复并启用 `DSH-QQBot-Heartbeat`（每 20 分钟检查；脚本节流为 2–4 小时、最多 6 条/日，-DryRun 验证；状态 Ready）
 - 5A 启动问候：已修 socket 检查/本地日期/30s 重试最多 10 分钟；控制台新增两级白名单（主人锁定、朋友可增删，默认倩倩姐）
 - 5A 等级差异：主人 08–24 可问候、内容可自然；朋友 09–22、每天一次、轻量问候且不引用记忆/关系/主人
 - 默认 `MEMORY_MODE=shadow`：stage2 recall 只记录候选，`inject=false`，不改变回复
