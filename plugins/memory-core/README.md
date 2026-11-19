@@ -41,5 +41,26 @@ facts 21 + events 373 -> 394 nodes
 
 ```text
 已做：schema / FTS5 / window_turns / 队列 / 事件写入 / facts+events 迁移 / pending 确认
-已做：确定性事实抽取、BM25+实体+recency+importance 排序、access_count 更新、memory_search 接新库\n未做：LLM 抽取评分、narrative、on 注入（stage 2.5 / 3）
+已做：确定性事实抽取、BM25+实体+recency+importance 排序、access_count 更新、memory_search 接新库
+未做：LLM 抽取评分、narrative、on 注入（stage 2.5 / 3）
 ```
+
+## LLM 抽取离线评估（2026-11-19）
+
+```bash
+$env:DEEPSEEK_API_KEY = '...'
+$env:DASHSCOPE_API_KEY = '...'
+node bin/llm-eval.mjs --limit 35 --model both
+```
+
+结果写入 `data/memory/llm-eval-*.json`，不接 live。
+
+24 条可用 extract 回合：
+
+```text
+deepseek-flash   解析 24/24，19 nodes，平均 119ms
+qwen3-vl-plus    解析 24/24，24 nodes，平均 3340ms
+```
+
+结论：文本记忆抽取用 `deepseek-flash`；Qwen3-VL-Plus 留给看图/视频。
+

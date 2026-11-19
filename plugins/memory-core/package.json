@@ -16,6 +16,7 @@
     "shadow-report": "node bin/shadow-report.mjs",
     "backfill-events": "node bin/backfill-events.mjs",
     "archive-internal": "node bin/archive-internal.mjs",
+    "llm-eval": "node bin/llm-eval.mjs",
     "migrate": "node migrate-cli.mjs",
     "admin": "node admin.mjs"
   },
