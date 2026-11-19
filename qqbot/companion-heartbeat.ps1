@@ -126,6 +126,12 @@ $recentSent = @($state.recent | Select-Object -Last 6)
 if ($recentSent.Count -gt 0) { $recentLines += '（你最近主动说过：' + ($recentSent -join ' / ') + '）' }
 
 $clock = $now.ToString('yyyy-MM-dd HH:mm, dddd')
+$knowledge = $null
+try {
+    $knowledgeJson = (& node 'D:\DSH\qqbot\scripts\knowledge-pick.mjs' --category history --json 2>$null | Out-String).Trim()
+    if ($knowledgeJson) { $knowledge = $knowledgeJson | ConvertFrom-Json }
+} catch { $knowledge = $null }
+$knowledgeLine = if ($knowledge) { $knowledge.text } else { '' }
 $prompt = @"
 $persona
 
@@ -133,6 +139,9 @@ $persona
 你是小鲸鱼，是主人的小鲸鱼，不是 DeepSeek 官方助手，不是模型/机器人。
 上面的设定是你自己的性格，不是一份需要你评论的文档；不要提“设定”“提示词”“看完了”。
 不要自称 DeepSeek、AI、助手、语言模型，也不要说“不装别人”。
+
+—— 可以分享的小知识 ——
+$knowledgeLine
 
 —— 当前情境 ——
 现在是 $clock。
@@ -143,17 +152,20 @@ $($recentLines -join "`n")
 你主动给他发一条消息。像突然想起一件事那样开口，不要像定时汇报。
 要求：
 1. 只输出你要发出去的那条消息正文，不要任何前缀、引号、解释、括号动作。
-2. 1~2 句，总共不超过 40 个字。
-3. 不要问"在吗""在干嘛"这种空话超过一次；优先分享一个具体的小念头、吐槽、或你正在做的事。
+2. 1~2 句，总共不超过 60 个字。
+3. 本次必须分享上面的小知识：用它开头，转述成你自己的话，像“我刚看到一个事……”；可以加一句短反应；不要照读，不要提知识库、来源。不要只写自己在发呆、刷视频、尾巴发麻、天气这种状态。
 4. 不要重复你最近说过的话，不要报时，不要"早安/晚安/吃饭了吗"这类模板。
 5. 不要使用任何工具，不要输出 Markdown，直接给文本。
 6. 不要提"我记得""记忆""上下文""只记得几句话"这类系统状态，也不要自称 AI/助手/模型。
 7. **不要假设任何没发生的事**：你并不知道他此刻在做什么。不许说"你刚才催我""你说过…""我们约好…"，也不许编造他的日程（考试、上班、开会、睡觉）。
-8. 只有"他最近说的话"里明确出现过的内容才可以引用；没有就只说你自己的状态、刚想到的念头，或问一个开放的小问题。
+8. 只有"他最近说的话"里明确出现过的内容才可以引用；小知识除外。没有新信息时，可以分享上面的小知识，或问一个开放的小问题。
 9. 不要用质问、抱怨、催促的语气开场（"催什么""你怎么又…"）。你只是忽然想找他说话，不是在等他回话。
 10. **不要提之前发过的图、表情包、文件，也不要提删除/收藏/0fa1 这类操作**；除非"他最近说的话"里最后 3 条明确说到。
 12. 心跳发不了图：如果你想聊某张表情，不要在心跳里聊；留到正常对话里用工具把图发出来再说。
 11. 不要假装知道他刚才在看什么、发了什么；你没有新信息时，就说自己的状态或问一个开放的小问题。
+
+—— 硬性要求 ——
+本次消息必须以“可以分享的小知识”为主要内容；不要只写自己的状态。
 "@
 
 # ---------- 生成 ----------
@@ -203,6 +215,19 @@ try {
     if ([string]::IsNullOrWhiteSpace($msg)) {
         Write-Log 'error: 生成结果为空'
         exit 1
+    }
+    # The model often ignores the knowledge fragment and talks about itself.
+    # If it did not use the selected fact, fall back to a plain share so every
+    # knowledge greeting actually comes from the local base.
+    if ($knowledge -and $knowledge.text) {
+        $factChars = ($knowledge.text -replace '[^\u4e00-\u9fa5]', '')
+        $usedFact = $false
+        for ($j = 0; $j -le ($factChars.Length - 3); $j++) {
+            if ($msg.Contains($factChars.Substring($j, 3))) { $usedFact = $true; break }
+        }
+        if (-not $usedFact) {
+            $msg = "刚看到一个事：$($knowledge.text)"
+        }
     }
     # Identity / meta guard: heartbeat must stay 小鲸鱼, never explain the prompt.
     if ($msg -match 'DeepSeek|deepseek|设定看完|提示词|我是\s*(AI|助手|模型)|作为(一个)?(AI|模型|助手)|不装别人') {

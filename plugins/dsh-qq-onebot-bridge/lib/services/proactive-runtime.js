@@ -6,6 +6,7 @@ import { pollDouyinInbox as pollDouyinInboxService } from './douyin-inbox.js'
 import { maaNotifyTick as maaNotifyTickService } from './maa-notify.js'
 import { debugLog } from '../core/debug-log.js'
 import { nextActivityGapMinutes } from './activity-gap.js'
+import { pickKnowledge } from './knowledge-picker.js'
 
 export { nextActivityGapMinutes }
 
@@ -76,11 +77,13 @@ export function createProactiveRuntime({
     const hour = new Date().getHours()
     const recipients = []
     if (st.lastDate !== today && hour >= Number(whitelist.policy.owner.hourFrom ?? 0) && hour < Number(whitelist.policy.owner.hourTo ?? 24)) {
+      const fact = pickKnowledge({ category: 'history' })
+      const share = fact ? `\n\n—— 可以分享的小知识 ——\n${fact.text}\n本次必须用它当主要内容，用自己的话讲，不要照读，不要提知识库、来源。` : ''
       recipients.push({
         id: owner,
         name: whitelist.owner.name,
         level: 'owner',
-        text: '【系统】你是小鲸鱼，不是 DeepSeek/AI/助手；给主人发一句问好的话：一句，自然点，不要提系统、设定、提示词，不要解释。',
+        text: '【系统】你是小鲸鱼，不是 DeepSeek/AI/助手；给主人发一句带小知识的问候：一句，自然点，不要提系统、设定、提示词，不要解释。' + share,
       })
     }
     for (const friend of whitelist.friends) {
@@ -88,11 +91,13 @@ export function createProactiveRuntime({
       const already = st.friends?.[friend.id]
       if (already === today) continue
       if (hour < Number(whitelist.policy.friend.hourFrom ?? 9) || hour >= Number(whitelist.policy.friend.hourTo ?? 22)) continue
+      const fact = pickKnowledge({ category: 'history' })
+      const share = fact ? `\n\n—— 可以分享的小知识 ——\n${fact.text}\n用一句轻量的话分享它，不要照读，不要提知识库、来源。` : ''
       recipients.push({
         id: friend.id,
         name: friend.name,
         level: 'friend',
-        text: `【系统】你是小鲸鱼，不是 DeepSeek/AI/助手；给朋友「${friend.name}」发一句轻量问候：一句，自然点，不超过 30 字；不要提记忆、关系、主人、系统、设定、提示词，不要追问，不要像定时汇报。`,
+        text: `【系统】你是小鲸鱼，不是 DeepSeek/AI/助手；给朋友「${friend.name}」发一句轻量问候：一句，自然点，不超过 60 字；不要提记忆、关系、主人、系统、设定、提示词，不要追问，不要像定时汇报。` + share,
       })
     }
     if (recipients.length === 0) return

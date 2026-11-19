@@ -20,6 +20,7 @@
 !/qqbot/persona/
 /qqbot/persona/*
 !/qqbot/persona/default.md
+!/qqbot/knowledge/
 !/qqbot/start-stack.ps1
 !/qqbot/stop-stack.ps1
 !/qqbot/docs/

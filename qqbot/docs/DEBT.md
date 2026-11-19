@@ -100,8 +100,10 @@
 - 5A 等级差异：主人 08–24 可问候、内容可自然；朋友 09–22、每天一次、轻量问候且不引用记忆/关系/主人
 - 说话泄漏防护（2026-11-19）：`sanitizeAssistantText` 清理方括号/英文自我纠错段；persona 增加“只输出最终正文”
 - 身份泄漏（2026-11-19 17:12）：主心跳 headless 输出“我是 DeepSeek/设定看完”；已加“你是小鲸鱼”身份锚点 + 拒绝 guard，修复后重新启用
+- 冷知识问候：`qqbot/knowledge/history.jsonl`（30 条历史，含来源/标签/weight），`knowledge-picker.js` 按最近使用选择；4A/5A 注入并记录 `data/knowledge-usage.json`
+- 知识问候兜底：主心跳若未使用选中知识，回退为“刚看到一个事：<本地知识>”，保证内容来自本地库
 - 默认 `MEMORY_MODE=shadow`：stage2 recall 只记录候选，`inject=false`，不改变回复
-- 验证：`test:new` 210、feature 73、CI OK、health HEALTH OK
+- 验证：`test:new` 211、feature 73、CI OK、health HEALTH OK
 - 待办：LLM shadow 真实消息验证与质量评估、narrative/离线巩固、on 模式（stage 2.5/3）
 
 ## P2
@@ -142,7 +144,7 @@
 
 ### 5. functions 覆盖仍低于 lines
 
-- 现状：all-lib 85.05 / 74.98 / 72.63（lines / branches / functions）
+- 现状：all-lib 85.11 / 74.95 / 72.78（lines / branches / functions）
 - 风险：默认回调、错误分支可能没测
 - 验收：functions ≥ 75%，branches ≥ 80%（分批提升，不一次拉满）
 
