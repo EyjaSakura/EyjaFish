@@ -97,7 +97,7 @@ export function createProactiveRuntime({
         id: friend.id,
         name: friend.name,
         level: 'friend',
-        text: `【系统】你是小鲸鱼，不是 DeepSeek/AI/助手；给朋友「${friend.name}」发一句轻量问候：一句，自然点，不超过 60 字；不要提记忆、关系、主人、系统、设定、提示词，不要追问，不要像定时汇报。` + share,
+        text: `【系统】你是小鲸鱼，不是 DeepSeek/AI/助手；给朋友「${friend.name}」发一句轻量问候：一句，自然点，不超过 60 字；不要提记忆、关系、主人、系统、设定、提示词；称呼必须用完整备注「${friend.name}」，不能缩短；不要追问，不要像定时汇报。` + share,
       })
     }
     if (recipients.length === 0) return

@@ -95,7 +95,7 @@
 - 回填：`backfill-events.mjs` 从 window_turns 补回 17 条短消息事件
 - 检索：系统/注入文本不入节点；内容词 OR + BM25；全停用词查询直接空；active 完全相同内容去重
 - 主动消息决策（2026-11-15）：1C 自由活动改 2–4 小时且 dry-run 静默；2D 抖音保持、3C 多人心跳保持
-- 3C 多人心跳：已加身份锚点、三國/历史知识、严格 `MESSAGE` 解析；未用知识时回退本地知识，禁止把原始 prose/CoT 直接发
+- 3C 多人心跳：已加身份锚点、三國/历史知识、严格 `MESSAGE` 解析；未用知识时回退本地知识，禁止把原始 prose/CoT 直接发\n- 称呼规则：3C prompt + 硬 guard 要求完整备注（倩倩姐≠倩倩，珊姐姐≠珊瑚）；5A 朋友 prompt 与 persona 同步
 - 4A 主心跳：已修复并启用 `DSH-QQBot-Heartbeat`（每 20 分钟检查；脚本节流为 2–4 小时、最多 6 条/日，-DryRun 验证；状态 Ready）
 - 4A 状态兼容：旧 `heartbeat-state.json` 缺 `nextGapMinutes` 时自动补字段，避免发送成功后状态写入报错
 - 5A 启动问候：已修 socket 检查/本地日期/30s 重试最多 10 分钟；控制台新增两级白名单（主人锁定、朋友可增删，默认倩倩姐）

@@ -123,6 +123,13 @@ $recent
 你之前对他性格的了解：
 $styleLine
 
+—— 称呼与关系 ——
+对方备注是「$note」。称呼必须用完整备注，不能缩短：
+- 「倩倩姐」就是倩倩姐，不能叫“倩倩”。
+- 「珊姐姐」就是珊姐姐，不能叫“珊”或“珊瑚”。
+关系是朋友，不是主人；不要用对主人的亲密称呼。
+不需要每句话都叫称呼；一旦叫，就必须叫对。
+
 —— 这次的任务 ——
 这是主动开口，不是回复他最后一句；不要接他最后一句，也不要假装知道他刚才在做什么。
 1. 先判断这个人的长期性格、说话风格、喜欢/讨厌的话题（2~3 句，写给以后的自己看；不要写"这一轮该怎么回"这种临时策略）。
@@ -193,6 +200,17 @@ MESSAGE: <要发送的话>
     if ([string]::IsNullOrWhiteSpace($msg)) { Write-Log "error: 生成结果为空 ($note)"; continue }
     if ($msg -match 'DeepSeek|deepseek|设定看完|提示词|我是\s*(AI|助手|模型)|作为(一个)?(AI|模型|助手)|不装别人') {
         Write-Log "reject identity/meta leak ($note): $msg"
+        continue
+    }
+    $shortNote = $note -replace '姐$', ''
+    if ($shortNote -ne $note -and $shortNote.Length -ge 2) {
+        if (($msg -match [regex]::Escape($shortNote)) -and ($msg -notmatch [regex]::Escape($note))) {
+            Write-Log "reject short address ($note -> $shortNote): $msg"
+            continue
+        }
+    }
+    if ($note -eq '珊姐姐' -and $msg -match '珊瑚') {
+        Write-Log "reject wrong address ($note -> 珊瑚): $msg"
         continue
     }
     if ($styleOut) { $style = $styleOut }
