@@ -92,8 +92,12 @@ foreach ($prop in $contacts.PSObject.Properties) {
     $styleLine = if ($style) { $style } else { '（还不了解，需要从下面的对话里判断）' }
     $knowledge = $null
     try {
-        $knowledgeJson = (& node 'D:\DSH\qqbot\scripts\knowledge-pick.mjs' --categories three-kingdoms,history --json 2>$null | Out-String).Trim()
-        if ($knowledgeJson) { $knowledge = $knowledgeJson | ConvertFrom-Json }
+        $knowledgeFile = Join-Path $DataDir "heartbeat-multi-knowledge-$uid.json"
+        Remove-Item $knowledgeFile -Force -ErrorAction SilentlyContinue
+        & node 'D:\DSH\qqbot\scripts\knowledge-pick.mjs' --categories three-kingdoms,history --json --out $knowledgeFile 2>$null | Out-Null
+        if (Test-Path $knowledgeFile) {
+            $knowledge = Get-Content $knowledgeFile -Raw -Encoding UTF8 | ConvertFrom-Json
+        }
     } catch { $knowledge = $null }
     $knowledgeLine = if ($knowledge) { $knowledge.text } else { '' }
     $knowledgeKind = if ($knowledge -and $knowledge.kind) { $knowledge.kind } else { '历史' }

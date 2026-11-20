@@ -138,8 +138,14 @@ if ($recentSent.Count -gt 0) { $recentLines += '（你最近主动说过：' + (
 $clock = $now.ToString('yyyy-MM-dd HH:mm, dddd')
 $knowledge = $null
 try {
-    $knowledgeJson = (& node 'D:\DSH\qqbot\scripts\knowledge-pick.mjs' --categories three-kingdoms,history --json 2>$null | Out-String).Trim()
-    if ($knowledgeJson) { $knowledge = $knowledgeJson | ConvertFrom-Json }
+    # Write to a UTF-8 file instead of parsing console output: under the
+    # scheduled-task host, PowerShell 5.1 can decode Chinese stdout as OEM.
+    $knowledgeFile = Join-Path $DataDir 'heartbeat-knowledge.json'
+    Remove-Item $knowledgeFile -Force -ErrorAction SilentlyContinue
+    & node 'D:\DSH\qqbot\scripts\knowledge-pick.mjs' --categories three-kingdoms,history --json --out $knowledgeFile 2>$null | Out-Null
+    if (Test-Path $knowledgeFile) {
+        $knowledge = Get-Content $knowledgeFile -Raw -Encoding UTF8 | ConvertFrom-Json
+    }
 } catch { $knowledge = $null }
 $knowledgeLine = if ($knowledge) { $knowledge.text } else { '' }
 $knowledgeKind = if ($knowledge -and $knowledge.kind) { $knowledge.kind } else { '历史' }
