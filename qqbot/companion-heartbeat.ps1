@@ -209,7 +209,9 @@ try {
     $proc = [Diagnostics.Process]::Start($psi)
     $outTask = $proc.StandardOutput.ReadToEndAsync()
     $errTask = $proc.StandardError.ReadToEndAsync()
-    $proc.StandardInput.Write($prompt)
+    $bytes = [Text.UTF8Encoding]::new($false).GetBytes($prompt)
+    $proc.StandardInput.BaseStream.Write($bytes, 0, $bytes.Length)
+    $proc.StandardInput.BaseStream.Flush()
     $proc.StandardInput.Close()
     if (-not $proc.WaitForExit($CFG.HeadlessTimeoutSec * 1000)) {
         try { $proc.Kill() } catch { }
