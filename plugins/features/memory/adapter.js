@@ -244,7 +244,15 @@ export function createMemoryAdapter({
     return next
   }
 
-  return { recall, ingest, health, setMode, currentStatus, degrade }
+  function close() {
+    try {
+      if (db && coreModule?.closeStore) coreModule.closeStore(db)
+      else if (db?.close) db.close()
+    } catch { /* ignore */ }
+    db = null
+  }
+
+  return { recall, ingest, health, setMode, currentStatus, degrade, close }
 }
 
 export const memoryAdapter = createMemoryAdapter()
