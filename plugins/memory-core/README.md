@@ -64,3 +64,13 @@ qwen3-vl-plus    解析 24/24，24 nodes，平均 3340ms
 
 结论：文本记忆抽取用 `deepseek-flash`；Qwen3-VL-Plus 留给看图/视频。
 
+
+## 配对盲评
+
+生成 30 组 old/new 隐藏 A/B 的盲评包：
+
+`ash
+node bin/blind-pack.mjs --count 30
+`
+
+输出 data/memory/blind-eval-*.md 与配对 key；评分完成后再打开 key。
