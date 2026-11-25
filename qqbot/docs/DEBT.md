@@ -110,7 +110,7 @@
 - 阶段 4（2026-11-25）：新增 `narrative.mjs`（LLM + 确定性 fallback）、`consolidate.mjs`（关闭旧窗口/叙事/prune/冲突统计）、`bin/daily.mjs`（备份 + 幂等 run_key + 报告）、`features/memory/bin/recheck.mjs`
 - 任务：`DSH-QQBot-Memory-Daily` 每日 04:30；`DSH-QQBot-Memory-Recheck` 每日 05:00；smoke 已跑，LLM 叙事与备份成功
 - 质量门禁：`quality.mjs` 过滤回执/填充词；已归档 4 条历史碎节点；`memory-eval-130` 合成验收 130 条
-- on 守卫：adapter 已支持 owner-only `inject=true` 与 900 字预算；status 仍为 `shadow`，未开 on，等待真人盲评/小流量
+- canary：`features/memory/bin/canary.mjs` 支持 `--on/--off`，切换前自动备份 status.json\n- on 守卫：adapter 已支持 owner-only `inject=true` 与 900 字预算；status 仍为 `shadow`，未开 on，等待真人盲评/小流量
 - 验证：test:new 218、CI OK、all-lib 85.11/74.91/72.80
 - 待办：130 条真实语义评估与 30 组盲评、on 小流量（stage 3）；图谱/向量仍不做
 
