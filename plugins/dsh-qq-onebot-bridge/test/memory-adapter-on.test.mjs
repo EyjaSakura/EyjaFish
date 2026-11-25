@@ -41,3 +41,38 @@ test('adapter：on 模式只对 owner 注入，非 owner 保留 fallback', async
     rmSync(dir, { recursive: true, force: true })
   }
 })
+
+test('adapter：off 回滚与 degraded fallback', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'memory-adapter-'))
+  const statusFile = join(dir, 'status.json')
+  let adapter = null
+  let broken = null
+  try {
+    adapter = createMemoryAdapter({
+      statusFile,
+      env: { MEMORY_MODE: 'on' },
+      loadCore: async () => ({ ...core, openStore: () => core.openStore(':memory:') }),
+      notify: async () => {},
+    })
+    adapter.setMode('off')
+    const off = await adapter.recall({ bridge: { ownerQQ: () => '123' }, key: 'u:123', fallbackText: 'OLD', message: { text: '端口' } })
+    assert.equal(off.mode, 'off')
+    assert.equal(off.inject, false)
+    assert.equal(off.text, '')
+
+    broken = createMemoryAdapter({
+      statusFile: join(dir, 'broken-status.json'),
+      env: { MEMORY_MODE: 'shadow' },
+      loadCore: async () => { throw new Error('core unavailable') },
+      notify: async () => {},
+    })
+    const degraded = await broken.recall({ bridge: { ownerQQ: () => '123' }, key: 'u:123', fallbackText: 'OLD', message: { text: '端口' } })
+    assert.equal(degraded.mode, 'degraded')
+    assert.equal(degraded.inject, false)
+    assert.equal(degraded.text, 'OLD')
+  } finally {
+    adapter?.close?.()
+    broken?.close?.()
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
