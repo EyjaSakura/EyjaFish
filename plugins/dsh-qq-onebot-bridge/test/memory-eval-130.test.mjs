@@ -34,8 +34,8 @@ test('memory eval：130 条合成验收用例', () => {
 
     for (let i = 1; i <= 20; i++) {
       const subject = `eval:conflict:${i}`
-      addNode(db, { id: `eval-conflict-a-${i}`, type: 'fact', subject, predicate: 'value', description: `版本 A${i}`, owner_confirmed: 1 })
-      addNode(db, { id: `eval-conflict-b-${i}`, type: 'fact', subject, predicate: 'value', description: `版本 B${i}`, owner_confirmed: 1 })
+      addNode(db, { id: `eval-conflict-a-${i}`, type: 'fact', subject, predicate: 'identity.claim', description: `版本 A${i}`, owner_confirmed: 1 })
+      addNode(db, { id: `eval-conflict-b-${i}`, type: 'fact', subject, predicate: 'identity.claim', description: `版本 B${i}`, owner_confirmed: 1 })
       assert.ok(detectConflicts(db).some((row) => row.subject === subject), `conflict ${i}`)
       cases++
     }

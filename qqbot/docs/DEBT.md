@@ -111,7 +111,7 @@
 - 任务：`DSH-QQBot-Memory-Daily` 每日 04:30；`DSH-QQBot-Memory-Recheck` 每日 05:00；smoke 已跑，LLM 叙事与备份成功
 - 质量门禁：`quality.mjs` 过滤回执/填充词；已归档 4 条历史碎节点；`memory-eval-130` 合成验收 130 条
 - canary：`features/memory/bin/canary.mjs` 支持 `--on/--off`，切换前自动备份 status.json\n- on 守卫：adapter 已支持 owner-only `inject=true` 与 900 字预算；status 仍为 `shadow`，未开 on，等待真人盲评/小流量
-- 验证：test:new 219、CI OK、all-lib 85.11/74.91/72.80
+- 验证：test:new 219、CI OK、all-lib 85.11/74.93/72.80
 - 待办：130 条真实语义评估与 30 组盲评、on 小流量（stage 3）；图谱/向量仍不做
 
 ## P2
@@ -152,7 +152,7 @@
 
 ### 5. functions 覆盖仍低于 lines
 
-- 现状：all-lib 85.11 / 74.91 / 72.80（lines / branches / functions）
+- 现状：all-lib 85.11 / 74.93 / 72.80（lines / branches / functions）
 - 风险：默认回调、错误分支可能没测
 - 验收：functions ≥ 75%，branches ≥ 80%（分批提升，不一次拉满）
 

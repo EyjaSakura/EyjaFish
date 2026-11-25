@@ -27,10 +27,17 @@ export function pruneStaleNodes(db, { now = Date.now(), olderThanDays = 90, impo
   return Number(result.changes)
 }
 
+const CONFLICT_PREDICATES = new Set([
+  'port', 'path', 'model', 'version', 'config',
+  'identity.name', 'identity.role', 'identity.claim',
+  'prefers', 'dislikes', 'promise',
+])
+
 export function detectConflicts(db) {
-  return db.prepare(`SELECT subject,predicate,COUNT(*) AS n,GROUP_CONCAT(description,' | ') AS descriptions
-    FROM nodes WHERE status='active' AND predicate IS NOT NULL AND predicate<>''
+  const rows = db.prepare(`SELECT subject,predicate,COUNT(*) AS n,GROUP_CONCAT(description,' | ') AS descriptions
+    FROM nodes WHERE status='active' AND type='fact' AND predicate IS NOT NULL AND predicate<>''
     GROUP BY subject,predicate HAVING n>1 ORDER BY n DESC`).all()
+  return rows.filter((row) => CONFLICT_PREDICATES.has(String(row.predicate)))
 }
 
 export async function runDaily(db, {
