@@ -141,7 +141,7 @@ export function createMemoryAdapter({
     try {
       const handle = openDb(mod)
       if (handle && typeof mod.recallText === 'function') {
-        const recalled = mod.recallText(handle, { subject: key, query, limit: 8 })
+        const recalled = mod.recallText(handle, { subject: key, query, limit: 8, budgetChars: 900, mode })
         if (typeof recalled === 'string' && recalled !== '') text = recalled
       }
     } catch (error) {
@@ -155,12 +155,16 @@ export function createMemoryAdapter({
         text: text === fallbackText ? '' : text,
       }, shadowLogFile)
     }
-    // Stage 2: shadow compares the candidate block but never injects it.
+    // Stage 3: on mode is owner-only. Everyone else keeps the legacy block.
+    const owner = String(bridge?.ownerQQ?.() ?? bridge?.config?.ownerQQ ?? bridge?.config?.owner ?? '')
+    const ownerKey = owner ? `u:${owner}` : ''
+    const isOwner = ownerKey !== '' && String(key) === ownerKey
+    const inject = mode === 'on' && isOwner && text !== fallbackText && text !== ''
     return {
       mode,
-      inject: false,
+      inject,
       text,
-      source,
+      source: inject ? 'stage3-on-owner' : source,
       stage: Number(mod?.STAGE) || 1,
     }
   }

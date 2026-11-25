@@ -13,7 +13,7 @@
   },
   "scripts": {
     "probes": "node probes.mjs",
-    "shadow-report": "node bin/shadow-report.mjs",
+    "shadow-report": "node bin/shadow-report.mjs",`r`n    "daily": "node bin/daily.mjs --all",`r`n    "recheck": "node bin/daily.mjs --env-recheck",
     "backfill-events": "node bin/backfill-events.mjs",
     "archive-internal": "node bin/archive-internal.mjs",
     "llm-eval": "node bin/llm-eval.mjs",

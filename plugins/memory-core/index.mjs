@@ -4,6 +4,7 @@ export const VERSION = '0.3.0-stage2'
 export const STAGE = 2
 export { DEFAULT_DB, openStore, closeStore, addNode, addWindowTurn, setDecision, enqueue, searchCandidates, listPending, confirmNode, dedupeActiveNodes, count, SCHEMA_VERSION } from './store.mjs'
 export { buildTokens, buildWordTokens, buildCharTokens, hasIcu } from './tokenize.mjs'
+export { isTrivialMemory } from './quality.mjs'
 export { extractEntities, extractStageOneNodes, isSubstantive, isInternalText, isMemoryEvent } from './extract.mjs'
 export { ingestTurn } from './ingest.mjs'
 export { recallText } from './recall.mjs'
@@ -11,6 +12,8 @@ export { rankCandidates, touchCandidates } from './rank.mjs'
 export { migrateLegacy } from './migrate.mjs'
 export { buildExtractionPrompt, parseExtraction, validateExtraction, extractWithLLM } from './llm-extract.mjs'
 export { callDeepSeek, extractWithDeepSeek } from './llm-client.mjs'
+export { generateWindowNarrative, buildNarrativePrompt, deterministicNarrative } from './narrative.mjs'
+export { runDaily, closeStaleWindows, pruneStaleNodes, detectConflicts } from './consolidate.mjs'
 
 export function envprobe({ checkSqlite = false, requireFn = null } = {}) {
   const result = {

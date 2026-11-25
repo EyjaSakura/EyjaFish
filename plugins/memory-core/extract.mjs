@@ -1,6 +1,8 @@
 // Stage 1.5 deterministic extractor. It does not call an LLM yet; it produces
 // one event per substantive user turn plus a few explicit, rule-safe facts.
 // The LLM extractor will replace/augment this behind the same output shape.
+import { isTrivialMemory } from './quality.mjs'
+
 const SUBSTANTIVE = /(记住|记一下|别忘了|约定|答应|喜欢|讨厌|想要|准备|正在|最近|今天|明天|昨天|端口|路径|文件|项目|工作|学习|考试|生日|名字|住在|养了|买了|去了|做了|开始|结束|完成)/
 const GREETING = /^(你好|在吗|嗨|hi|hello|早|晚安|早安|午安|哈哈|嗯|哦|好的|ok|行|可以)[。！!？?~～\s]*$/i
 const IDENTITY = /^(记住|记一下)[：:，,\s]*(.*(?:管理员|主人|权限|身份|密码|地址|电话).*)$/
@@ -15,6 +17,7 @@ export function isInternalText(text) {
 export function isSubstantive(text) {
   const value = String(text ?? '').trim()
   if (value.length < 6) return false
+  if (isTrivialMemory(value)) return false
   if (isInternalText(value)) return false
   if (GREETING.test(value)) return false
   return SUBSTANTIVE.test(value) || value.length >= 20
@@ -26,6 +29,7 @@ export function isSubstantive(text) {
 export function isMemoryEvent(text) {
   const value = String(text ?? '').trim()
   if (value.length < 2) return false
+  if (isTrivialMemory(value)) return false
   if (isInternalText(value)) return false
   if (GREETING.test(value)) return false
   return /[\p{L}\p{N}]/u.test(value)

@@ -1,6 +1,7 @@
 // Stage 1.5 LLM extraction seam. It is NOT called by the live adapter yet.
 // A host that wants LLM extraction injects callModel(prompt) -> string|object.
 import { extractStageOneNodes } from './extract.mjs'
+import { isTrivialMemory } from './quality.mjs'
 
 const ALLOWED_TYPES = new Set(['event', 'fact', 'feeling', 'promise', 'narrative'])
 
@@ -44,7 +45,7 @@ export function validateExtraction(input, { subject, windowId, traceId, turns = 
     const type = String(item?.type ?? '')
     if (!ALLOWED_TYPES.has(type)) continue
     const description = String(item?.description ?? '').trim()
-    if (description === '') continue
+    if (description === '' || isTrivialMemory(description)) continue
     const source = String(item?.source ?? 'user_message')
     if (type === 'fact' && source === 'external_web') continue
     if (type === 'fact' && source === 'assistant') continue
