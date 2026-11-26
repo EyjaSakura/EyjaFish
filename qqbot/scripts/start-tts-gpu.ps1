@@ -8,6 +8,14 @@ $Root = 'D:\DSH\GPT-SoVITS'
 $Python = 'D:\DSH\voice\env_zluda\Scripts\python.exe'
 $Launcher = 'D:\DSH\voice\zluda\run_api_gpu.py'
 $LogDir = 'D:\DSH\qqbot\logs'
+# [voice-off] 占用内存太大暂时关闭；audio start is gated by the same marker.
+$VoiceDisabledFile = 'D:\DSH\qqbot\data\voice-disabled.txt'
+
+if (Test-Path $VoiceDisabledFile) {
+    $reason = (Get-Content $VoiceDisabledFile -Raw -Encoding UTF8).Trim()
+    Add-Content -Path (Join-Path $LogDir 'tts-start.log') -Value ('{0} voice disabled: {1}' -f (Get-Date -Format 'HH:mm:ss'), $reason) -Encoding UTF8
+    exit 0
+}
 
 if (Get-NetTCPConnection -State Listen -LocalPort 9880 -ErrorAction SilentlyContinue) {
     Add-Content -Path (Join-Path $LogDir 'tts-start.log') -Value ('{0} 9880 busy, skip' -f (Get-Date -Format 'HH:mm:ss'))

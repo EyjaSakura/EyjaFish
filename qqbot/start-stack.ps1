@@ -135,7 +135,12 @@ if ($dy) {
 }
 
 # --- 5.5 本地 GPT-SoVITS 语音服务（9880，纯烬艾雅法拉 v4 音色）---
-if (Get-NetTCPConnection -State Listen -LocalPort 9880 -ErrorAction SilentlyContinue) {
+# [voice-off] 占用内存太大暂时关闭；data\voice-disabled.txt 存在时跳过语音自动启动。
+$VoiceDisabledFile = Join-Path $Root 'data\voice-disabled.txt'
+if (Test-Path $VoiceDisabledFile) {
+    $voiceReason = (Get-Content $VoiceDisabledFile -Raw -Encoding UTF8).Trim()
+    Write-Log "SKIP gpt-sovits: $voiceReason"
+} elseif (Get-NetTCPConnection -State Listen -LocalPort 9880 -ErrorAction SilentlyContinue) {
     Write-Log 'gpt-sovits api already listening on 9880'
 } else {
     Write-Log 'starting gpt-sovits api (port 9880)'

@@ -1,4 +1,4 @@
-﻿# boot-start.ps1 - boot entry: campus login (5 tries) -> popup + wait for manual login -> voice -> bot stack
+# boot-start.ps1 - boot entry: campus login (5 tries) -> popup + wait for manual login -> voice -> bot stack
 # ASCII only. Chinese alert text lives in data\campus-alert-title.txt / campus-alert-template.txt (UTF-8).
 param([switch]$SkipStack, [switch]$SkipVoice)
 
@@ -92,6 +92,7 @@ if ($online) {
 }
 
 # 4. voice gateways (local, no internet needed)
+# [voice-off] Memory usage too high; disabled until data\voice-disabled.txt is removed.
 if (-not $SkipVoice) {
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'D:\DSH\qqbot\scripts\start-tts-proxy.ps1'
     Write-Log "tts proxy start rc=$LASTEXITCODE"
