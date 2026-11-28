@@ -126,12 +126,19 @@ if (Get-NetTCPConnection -State Listen -LocalPort 8899 -ErrorAction SilentlyCont
 }
 
 # --- 5. 抖音私信 watcher ---
-$dy = Get-CimInstance Win32_Process -Filter "Name='node.exe'" | Where-Object { $_.CommandLine -match 'dm-watch\.mjs' }
-if ($dy) {
-    Write-Log "douyin watcher already running (pid $($dy.ProcessId -join ','))"
+# [douyin-off] 占用资源太大暂时关闭；data\douyin-disabled.txt 存在时跳过抖音 watcher。
+$DouyinDisabledFile = Join-Path $Root 'data\douyin-disabled.txt'
+if (Test-Path $DouyinDisabledFile) {
+    $douyinReason = (Get-Content $DouyinDisabledFile -Raw -Encoding UTF8).Trim()
+    Write-Log "SKIP douyin watcher: $douyinReason"
 } else {
-    Write-Log 'starting douyin watcher'
-    Start-Process -FilePath 'node.exe' -ArgumentList 'dm-watch.mjs' -WorkingDirectory (Join-Path $Root 'douyin') -WindowStyle Hidden -RedirectStandardOutput (Join-Path $LogDir 'douyin-watch.out.log') -RedirectStandardError (Join-Path $LogDir 'douyin-watch.err.log')
+    $dy = Get-CimInstance Win32_Process -Filter "Name='node.exe'" | Where-Object { $_.CommandLine -match 'dm-watch\.mjs' }
+    if ($dy) {
+        Write-Log "douyin watcher already running (pid $($dy.ProcessId -join ','))"
+    } else {
+        Write-Log 'starting douyin watcher'
+        Start-Process -FilePath 'node.exe' -ArgumentList 'dm-watch.mjs' -WorkingDirectory (Join-Path $Root 'douyin') -WindowStyle Hidden -RedirectStandardOutput (Join-Path $LogDir 'douyin-watch.out.log') -RedirectStandardError (Join-Path $LogDir 'douyin-watch.err.log')
+    }
 }
 
 # --- 5.5 本地 GPT-SoVITS 语音服务（9880，纯烬艾雅法拉 v4 音色）---

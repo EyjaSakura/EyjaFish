@@ -17,6 +17,8 @@
 !/qqbot/companion-heartbeat.ps1
 !/qqbot/companion-heartbeat.vbs
 !/qqbot/companion-heartbeat-multi.ps1
+!/qqbot/watcher-watchdog.ps1
+!/qqbot/watcher-watchdog.vbs
 !/qqbot/persona/
 /qqbot/persona/*
 !/qqbot/persona/default.md
